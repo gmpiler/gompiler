@@ -3,6 +3,6 @@
 
 #define SIZE 256
 
-void decomposer(char code[][SIZE]);
+void decomposer(char code[][SIZE], int codenum);
 
 #endif

@@ -4,7 +4,7 @@
 #include "decomposer.h"
 #include "IR.h"
 
-#define debug_mode 1 // if 1 then on
+#define DEBUG
 #define SIZE 256
 
 /**
@@ -26,19 +26,28 @@ int main(int argc, char *argv[])
 
 /* --- OBTAIN CODE INFO --- */
     int codeline = 0;
+    /**
+     * @brief code配列にソースコードをコピーしていく
+     */
     while(fgets(srcline, SIZE, srcfile) != NULL) {
         strcpy(code[codeline], srcline);
         codeline++;
     }
 
 /* --- MODIFY CODE --- */
-    decomposer(code);
+    decomposer(code, codeline);
 
 /* --- PRINT MODIFIED CODE --- */
+    /**
+     * TODO: 後々，codeにはソースと1対1な中間表現が格納され，ミドルパスに渡される予定
+     */
     for(int dstlineiter = 0; dstlineiter < codeline; dstlineiter++){
         fprintf(dstfile, code[dstlineiter]);
     }
-    if(debug_mode == 1) printf("> IR's been generated\n");
+
+#ifdef DEBUG
+     printf("> IR's been generated\n");
+#endif
 
     fclose(srcfile);
     fclose(dstfile);
