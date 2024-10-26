@@ -1,4 +1,4 @@
-#define MAX_TOKEN_LENGTH 256
+#define MAX_TOKEN_LENGTH 256    // 1トークンあたりの最大文字数
 
 typedef enum token_type {
     VAR,

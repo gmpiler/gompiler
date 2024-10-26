@@ -5,17 +5,14 @@
 #include "decomposer.h"
 #include "token.h"
 
-#define SIZE 256
-#define MAX_LEX_SIZE 256
+#define SIZE 256            // codeの1行あたりのMAX文字数
 
 #if 1
 #define DEBUG
 #endif
 
 void init_codes(char code[][SIZE], int codenum);
-void delete_crlf(char *code);
-size_t split(char* s, const char* separator, char** result, size_t result_size);
-void set_token(TOKENS *root_token, char* token);
+void set_token(TOKENS *root_token, char* token, int key);
 void set_token_type(TOKENS *node, char *token);
 void append_token(TOKENS *root_token, TOKENS *new_node);
 
@@ -26,29 +23,31 @@ void append_token(TOKENS *root_token, TOKENS *new_node);
  */
 void decomposer(char code[][SIZE], int codenum)
 {
-    char *token; // codeから切り出す語句
-    char token_for_split[] = " \t";  /* ' ' + ';'*/
-
-    printf("--- decomposer ---\n");
     init_codes(code, codenum);
-    // codeを1行ごと読み込む
-    for(int codeline = 0; codeline < codenum; codeline++){
-        char *tokenbuf[MAX_TOKEN_LENGTH];
-        // 字句ごとに分ける
-        tokenbuf[0] = strtok(code[codeline], token_for_split);
-        for(int tokennum = 1; tokennum < MAX_TOKEN_LENGTH; tokennum++) {
-            tokenbuf[tokennum] = strtok(NULL, token_for_split);
+    printf("--- decomposer ---\n");
+
+    char spaces[] = " \t";  /* ' ' or '\t'*/
+
+/* --- TOKENIZER --- */
+    // spacesでトークンを切りだす
+    int key = 0;
+    TOKENS *root = (TOKENS*)malloc(sizeof(TOKENS));
+    for(int codeline = 0; codeline < codenum; codeline++){ // codeを1行ごと読み込む
+        // code中の1番初めのtokenをrootとする
+        char *token = strtok(code[codeline], spaces);
+
+        // code中の2番目以降のtokenをrootにappendしていく
+        while(token != NULL) {
+            set_token(root, token, key);
+            token = strtok(NULL, spaces);
+            key = 1;
         }
-        for(int delete = 0; delete < MAX_TOKEN_LENGTH; delete++){
-            if(tokenbuf[delete] == '\n') {
-                tokenbuf[delete] = '\0';
-                printf("(%s) detected: %d\n", code[codeline], delete);
-            }
-        }
-        for(int i=0; i<256; i++){
-            if(tokenbuf[i] != NULL) printf("<%s>, ", tokenbuf[i]);
-        }
-        printf("\n");
+    }
+
+    // カッコやカンマ対応
+
+    for(TOKENS *iter = root; iter != NULL; iter = iter->next){
+        printf("token: <%s>, type: <%d>\n", iter->value, iter->type);
     }
 }
 
@@ -56,30 +55,19 @@ void decomposer(char code[][SIZE], int codenum)
  * @brief codelineの2個目以降のtokenに関して，dataとtypeを設定する．
  * また，root_tokenから辿り末尾にtokenをくっつける
  */
-void set_token(TOKENS *root_token, char *token)
+void set_token(TOKENS *root_token, char *token, int key)
 {
-    printf("\ttoken is %s\n", token);
-    // if(root_token->next != NULL) { // root以外(codeの2番目以降のtoken)の時
-        TOKENS *new_node = (TOKENS*)malloc(sizeof(TOKENS));
-        for(int i=0; i<256; i++){
-            new_node->value[i] = '\0';
-        }
-        new_node->value[0] = '\0';
-        strcpy(new_node->value, token); // TODO: ここ，memcpyにしてみては．strcpyバグる...
-        printf("NEW TOKEN: <%s>\n", new_node->value);
-        set_token_type(new_node, token);
+    TOKENS *new_node = (TOKENS*)malloc(sizeof(TOKENS));
+    strcpy(new_node->value, token);
+    // set_token_type(new_node, new_node->value);
+
+    if(key == 0) { // rootの場合
+        strcpy(root_token->value, new_node->value);
+        root_token->next = NULL;
+        root_token->prev = NULL;
+    }else{
         append_token(root_token, new_node);
-        printf("%s, %d\n", new_node->value, new_node->type);
-    // }else{ // root(codeの1番目のtoken)の時
-    //     for(int i=0; i<256; i++){
-    //         root_token->value[i] = '\0';
-    //     }
-    //     strcpy(root_token->value, token);
-    //     set_token_type(root_token, token);
-    //     root_token->next = NULL;
-    //     root_token->prev = NULL;
-    //     printf("[ROOT] val: %s, type: %d\n", root_token->value, root_token->type);
-    // }
+    }
 }
 
 /**
@@ -109,47 +97,6 @@ void set_token_type(TOKENS *token_node, char *token)
         default:
             token_node->type = CONST;
             break;
-    }
-}
-
-/**
- * @attention 現在は未使用．特定文字で分けたい時に使うかも．
- * @brief 1行を語句に分ける関数．外部関数．
- * @return 語句数
- */
-size_t split(char* s, const char* separator, char** result, size_t result_size)
-{
-    assert(s != NULL);
-    assert(separator != NULL);
-    assert(result != NULL);
-    assert(result_size > 0);
-
-    size_t i = 0;
-
-    char* p = strtok(s, separator);
-    while (p != NULL) {
-        assert(i < result_size);
-        result[i] = p;
-        ++i;
-
-        p = strtok(NULL, separator);
-    }
-
-    return i;
-}
-
-/**
- * @brief 文字列の末尾にある改行を取り除く
- */
-void delete_crlf(char *code)
-{
-    int c = 0;
-    while(c < SIZE){
-        if(code[c] == '\n') {
-            code[c] = '\0';
-            break;
-        }
-        c++;
     }
 }
 
