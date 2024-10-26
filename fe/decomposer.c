@@ -26,28 +26,27 @@ void append_token(TOKENS *root_token, TOKENS *new_node);
 void decomposer(char code[][SIZE], int codenum)
 {
     char *token; // codeから切り出す語句
-    char token_for_split[] = " \n\t";  /* ' ' + ';' + '\n' */
+    char token_for_split[] = " \t";  /* ' ' + ';' + '\n' */
 
     printf("--- decomposer ---\n");
     // codeを1行ごと読み込む
     for(int codeline = 0; codeline < codenum; codeline++){
-#ifdef DEBUG
-        printf("<%s>\n", code[codeline]);
-#endif
+        char *tokenbuf[MAX_TOKEN_LENGTH];
         // 字句ごとに分ける
-        token = strtok(code[codeline], token_for_split);
-        TOKENS *root = malloc(sizeof(TOKENS));
-        while(token != NULL){
-            // TODO: ここでtokenを適当なデータ構造に保存
-            printf("\ttoken is %s\n", token);
-            set_token(root, token);
-            token = strtok(NULL, token_for_split);
+        tokenbuf[0] = strtok(code[codeline], token_for_split);
+        for(int tokennum = 1; tokennum < MAX_TOKEN_LENGTH; tokennum++) {
+            tokenbuf[tokennum] = strtok(NULL, token_for_split);
+            for(int delete = 0; delete < MAX_TOKEN_LENGTH; delete++){
+                if(tokenbuf[delete] == '\n') {
+                    tokenbuf[delete] = '\0';
+                    printf("detected\n");
+                }
+            }
         }
-#ifdef DEBUG
-        for(TOKENS *iter = root; iter != NULL; iter = iter->next){
-            printf("\t|%s| -> type: %d\n", iter->value, iter->type);
+        for(int i=0; i<256; i++){
+            if(tokenbuf[i] != NULL) printf("<%s>, ", tokenbuf[i]);
         }
-#endif
+        printf("\n");
     }
 }
 
@@ -57,19 +56,28 @@ void decomposer(char code[][SIZE], int codenum)
  */
 void set_token(TOKENS *root_token, char *token)
 {
-    if(root_token->value != NULL) { // root以外(codeの2番目以降のtoken)の時
-        TOKENS *new_node = malloc(sizeof(TOKENS));
-        strcpy(new_node->value, token);
+    printf("\ttoken is %s\n", token);
+    // if(root_token->next != NULL) { // root以外(codeの2番目以降のtoken)の時
+        TOKENS *new_node = (TOKENS*)malloc(sizeof(TOKENS));
+        for(int i=0; i<256; i++){
+            new_node->value[i] = '\0';
+        }
+        new_node->value[0] = '\0';
+        strcpy(new_node->value, token); // TODO: ここ，memcpyにしてみては．strcpyバグる...
+        printf("NEW TOKEN: <%s>\n", new_node->value);
         set_token_type(new_node, token);
         append_token(root_token, new_node);
-        printf("[NODE] val: %s, type: %d\n", new_node->value, new_node->type);
-    }else{ // root(codeの1番目のtoken)の時
-        strcpy(root_token->value, token);
-        set_token_type(root_token, token);
-        root_token->next = NULL;
-        root_token->prev = NULL;
-        printf("[ROOT] val: %s, type: %d\n", root_token->value, root_token->type);
-    }
+        printf("%s, %d\n", new_node->value, new_node->type);
+    // }else{ // root(codeの1番目のtoken)の時
+    //     for(int i=0; i<256; i++){
+    //         root_token->value[i] = '\0';
+    //     }
+    //     strcpy(root_token->value, token);
+    //     set_token_type(root_token, token);
+    //     root_token->next = NULL;
+    //     root_token->prev = NULL;
+    //     printf("[ROOT] val: %s, type: %d\n", root_token->value, root_token->type);
+    // }
 }
 
 /**
@@ -97,6 +105,7 @@ void set_token_type(TOKENS *token_node, char *token)
             token_node->type = CONST;
             break;
         default:
+            token_node->type = CONST;
             break;
     }
 }
