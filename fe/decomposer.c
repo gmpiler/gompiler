@@ -110,10 +110,15 @@ void tokenize_others(TOKENS *root_token)
                 memcpy(first_token->value, iter->value, c);
                 memcpy(latter_token->value, &iter->value[c + 1], MAX_TOKEN_LENGTH - c);
 
-                iter->prev->next = first_token;
-                first_token->prev = iter->prev;
-                first_token->next = middle_token;
-                middle_token->prev = first_token;
+                if(first_token->value[0] == 0x0){       // firstがヌル文字の場合．"0;();;;"など区切り文字が連続する場合に生じるケースに対応
+                    iter->prev->next = middle_token;
+                    middle_token->prev = iter->prev;
+                }else{
+                    iter->prev->next = first_token;
+                    first_token->prev = iter->prev;
+                    first_token->next = middle_token;
+                    middle_token->prev = first_token;
+                }
 
                 /**
                  * 例えば，トークンがmain(void)の場合．
