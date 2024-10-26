@@ -18,7 +18,6 @@ void set_token_type(TOKENS *node, char *token);
 void append_token(TOKENS *root_token, TOKENS *new_node);
 void tokenize_others(TOKENS *root_token);
 int check_split(char c);
-size_t split(char* s, const char* separator, char** result, size_t result_size);
 int is_type_token(char *token);
 int is_num_token(char *token);
 
@@ -34,7 +33,7 @@ void decomposer(char code[][SIZE], int codenum)
 
     char spaces[] = " \t";  /* ' ' or '\t'*/
 
-/* --- TOKENIZER --- */
+/* --- TOKENIZER(LEXER) --- */
     // spacesでトークンを切りだす
     int key = 0;
     TOKENS *root = (TOKENS*)malloc(sizeof(TOKENS));         // tokens双方向リストの先頭．ここに全てのトークンを格納
@@ -63,6 +62,9 @@ void decomposer(char code[][SIZE], int codenum)
         printf("token: <%s>, type: <%d>\n", iter->value, iter->type);
     }
 #endif
+
+/* --- TOKENIZER(PARSER) --- */
+
 }
 
 /**
@@ -318,30 +320,3 @@ void init_codes(char code[][SIZE], int codenum)
         }
     }
 }
-
-/**
- * @attention 現在は未使用．特定文字で分けたい時に使うかも．
- * @brief 1行を語句に分ける関数．外部関数．
- * @return 語句数
- */
-size_t split(char* s, const char* separator, char** result, size_t result_size)
-{
-    assert(s != NULL);
-    assert(separator != NULL);
-    assert(result != NULL);
-    assert(result_size > 0);
-
-    size_t i = 0;
-
-    char* p = strtok(s, separator);
-    while (p != NULL) {
-        assert(i < result_size);
-        result[i] = p;
-        ++i;
-
-        p = strtok(NULL, separator);
-    }
-
-    return i;
-}
-
