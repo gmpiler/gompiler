@@ -12,6 +12,7 @@
 #define DEBUG
 #endif
 
+void init_codes(char code[][SIZE], int codenum);
 void delete_crlf(char *code);
 size_t split(char* s, const char* separator, char** result, size_t result_size);
 void set_token(TOKENS *root_token, char* token);
@@ -26,9 +27,10 @@ void append_token(TOKENS *root_token, TOKENS *new_node);
 void decomposer(char code[][SIZE], int codenum)
 {
     char *token; // codeから切り出す語句
-    char token_for_split[] = " \t";  /* ' ' + ';' + '\n' */
+    char token_for_split[] = " \t";  /* ' ' + ';'*/
 
     printf("--- decomposer ---\n");
+    init_codes(code, codenum);
     // codeを1行ごと読み込む
     for(int codeline = 0; codeline < codenum; codeline++){
         char *tokenbuf[MAX_TOKEN_LENGTH];
@@ -36,11 +38,11 @@ void decomposer(char code[][SIZE], int codenum)
         tokenbuf[0] = strtok(code[codeline], token_for_split);
         for(int tokennum = 1; tokennum < MAX_TOKEN_LENGTH; tokennum++) {
             tokenbuf[tokennum] = strtok(NULL, token_for_split);
-            for(int delete = 0; delete < MAX_TOKEN_LENGTH; delete++){
-                if(tokenbuf[delete] == '\n') {
-                    tokenbuf[delete] = '\0';
-                    printf("detected\n");
-                }
+        }
+        for(int delete = 0; delete < MAX_TOKEN_LENGTH; delete++){
+            if(tokenbuf[delete] == '\n') {
+                tokenbuf[delete] = '\0';
+                printf("(%s) detected: %d\n", code[codeline], delete);
             }
         }
         for(int i=0; i<256; i++){
@@ -148,5 +150,19 @@ void delete_crlf(char *code)
             break;
         }
         c++;
+    }
+}
+
+/**
+ * @brief codeから改行を削除する
+ */
+void init_codes(char code[][SIZE], int codenum)
+{
+    for(int codeline = 0; codeline < codenum; codeline++){
+        for(int s = 0; s < SIZE; s++){
+            if(code[codeline][s] == '\n' || code[codeline][s] == '\r' || code[codeline][s] == '\r\n') {
+                code[codeline][s] = '\0';
+            }
+        }
     }
 }
