@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <ctype.h>
 #include "decomposer.h"
 #include "token.h"
 
@@ -18,6 +19,8 @@ void append_token(TOKENS *root_token, TOKENS *new_node);
 void tokenize_others(TOKENS *root_token);
 int check_split(char c);
 size_t split(char* s, const char* separator, char** result, size_t result_size);
+int is_type_token(char *token);
+int is_num_token(char *token);
 
 /**
  *  @brief ENTRY POINT
@@ -53,12 +56,18 @@ void decomposer(char code[][SIZE], int codenum)
     // 切り出したトークンのタイプを設定する
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
         set_token_type(iter, iter->value);
+    }
+
+#ifdef DEBUG
+    for(TOKENS *iter = root; iter != NULL; iter = iter->next){
         printf("token: <%s>, type: <%d>\n", iter->value, iter->type);
     }
+#endif
 }
 
 /**
  * @brief 文字cが分割対象文字かどうか
+ * TODO: ここに，トークンを切り出したい文字を追加していけばよい
  */
 int check_split(char c)
 {
@@ -79,7 +88,19 @@ int check_split(char c)
         case ']':
             ret = 1;
             break;
+        case '=':
+            ret = 1;
+            break;
+        case '+':
+            ret = 1;
+            break;
+        case '-':
+            ret = 1;
+            break;
         case '*':
+            ret = 1;
+            break;
+        case '/':
             ret = 1;
             break;
 
@@ -183,17 +204,103 @@ void append_token(TOKENS *root_token, TOKENS *new_node)
 }
 
 /**
+ * @brief ここに型の予約語を記載
+ */
+int is_type_token(char *token)
+{
+    if( (strcmp(token, "int") == 0) ||
+        (strcmp(token, "float") == 0) ||
+        (strcmp(token, "double") == 0) ||
+        (strcmp(token, "void") == 0)
+    ) {
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+int is_num_token(char *token)
+{
+    int violate = 0;
+
+    for(int i = 0; i < MAX_TOKEN_LENGTH; i++){
+        if(token[i] == 0x0) break;  // NULL character
+        if(isdigit(token[i]) == 0) {
+            violate++;
+        }
+    }
+    return (violate == 0) ? 1 : 0;
+}
+
+/**
  * @brief tokenに応じて，nodeのtypeを設定することに責任を負う
  */
 void set_token_type(TOKENS *token_node, char *token)
 {
-    char temp = token[0];
-    switch(temp) {
-        case '0':
-            token_node->type = CONST;
+    if(is_type_token(token)) {
+        token_node->type = TYPE;
+        return;
+    }
+    if(is_num_token(token)) {
+        token_node->type = NUM;
+        return;
+    }
+    if(strcmp(token, "return") == 0) {
+        token_node->type = RET;
+        return;
+    }
+
+/* --- one character --- */
+    char onechar = token[0];
+    switch(onechar) {
+        case '(':
+            token_node->type = LPAREN;
+            break;
+        case ')':
+            token_node->type = RPALEN;
+            break;
+        case '[':
+            token_node->type = LBRACKET;
+            break;
+        case ']':
+            token_node->type = RBRACKET;
+            break;
+        case '{':
+            token_node->type = LBRACE;
+            break;
+        case '}':
+            token_node->type = RBRACE;
+            break;
+        case ':':
+            token_node->type = COLON;
+            break;
+        case ';':
+            token_node->type = SEMICOLON;
+            break;
+        case '+':
+            token_node->type = OP;
+            break;
+        case '-':
+            token_node->type = OP;
+            break;
+        case '*':
+            token_node->type = OP;
+            break;
+        case '/':
+            token_node->type = OP;
+            break;
+        case '=':
+            token_node->type = ASSIGN;
             break;
         default:
-            token_node->type = CONST;
+            // それ以外をfunc, array, varに割り当て
+            if(token_node->next->type == LPAREN) {
+                token_node->type = FUNC;
+            }else if(token_node->next->type == LBRACKET) {
+                token_node->type = ARRAY;
+            }else{
+                token_node->type = VAR;
+            }
             break;
     }
 }
