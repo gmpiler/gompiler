@@ -19,13 +19,10 @@ typedef enum token_type {
     WHILE,
     IF,
 
-/* --- 上記以外はNAME --- */
-    NAME,
-
-/* --- NAMEを以下に割り当て --- */
-    VAR,
+/* --- 後を読んで決定するもの --- */
     ARRAY,
     FUNC,
+    VAR,
 
 /* --- その他 --- */
     UNDEC
