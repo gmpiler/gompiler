@@ -251,6 +251,18 @@ void set_token_type(TOKENS *token_node, char *token)
         token_node->type = RET;
         return;
     }
+    if(strcmp(token, "for") == 0) {
+        token_node->type = FOR;
+        return;
+    }
+    if(strcmp(token, "if") == 0) {
+        token_node->type = IF;
+        return;
+    }
+    if(strcmp(token, "while") == 0) {
+        token_node->type = WHILE;
+        return;
+    }
 
 /* --- one character --- */
     char onechar = token[0];

@@ -15,6 +15,9 @@ typedef enum token_type {
     OP,             // +, -, *, /等
     ASSIGN,         // =
     NUM,            // numbers
+    FOR,
+    WHILE,
+    IF,
 
 /* --- 上記以外はNAME --- */
     NAME,
