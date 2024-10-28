@@ -108,9 +108,10 @@ void analyze_tokens(TOKENS *root)
     // mainfunc->arg_head = (struct statement*)malloc(sizeof(struct statement));
     int search_func_paren = 0;
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
+        printf(">> @Token %s(%d), ...\n", iter->value, iter->mark_as_decoded);
         if(iter->mark_as_decoded == 1) continue;
         int ty = iter->type;
-        int nextty = iter->next->type;
+        int nextty = (iter->next == NULL) ? -1 : iter->next->type;
         if(ty == TYPE && nextty == FUNC) {
             printf("func detected\n");
             iter->mark_as_decoded = 1;                  // int
@@ -130,6 +131,7 @@ void analyze_tokens(TOKENS *root)
             printf("detect { , %d\n", search_func_paren);
         }
         if(iter->type == RBRACE) {
+            printf("sfp: %d\n", search_func_paren);
             if(search_func_paren == 0){
                 iter->mark_as_decoded = 1;  /* int main(void){ '}'を見つけた */
                 printf("detect final }, %d\n", search_func_paren);

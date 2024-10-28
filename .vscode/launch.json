@@ -1,0 +1,38 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "gompiler_fe",
+            "type": "cppdbg",
+            "request": "launch",
+            //mmpの場所
+            "program": "/mnt/c/Users/user/Desktop/github成果物/compiler/work/fe",
+            //引数．オプションなどを都度変更
+            "args": [
+                "/mnt/c/Users/user/Desktop/github成果物/compiler/testhello.c",
+                "/mnt/c/Users/user/Desktop/github成果物/compiler/testhello.ir",
+                "/mnt/c/Users/user/Desktop/github成果物/compiler/src/testhello.c" //かつてはqがbqだったらしい
+            ],
+            "stopAtEntry": false,
+            "cwd": "/mnt/c/Users/user/Desktop/github成果物/compiler/work", //カレントリワーキングディレクトリ
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+    ]
+}
