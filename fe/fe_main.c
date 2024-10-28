@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
         codeline++;
     }
 
-/* --- MODIFY CODE --- */
+/* --- TOKENIZER --- */
     decomposer(code, codeline);
 
 /* --- PRINT MODIFIED CODE --- */

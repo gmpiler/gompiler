@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "decomposer.h"
 #include "token.h"
+#include "IR.h"
 
 #define SIZE 256            // codeの1行あたりのMAX文字数
 
@@ -17,14 +18,16 @@ void set_token(TOKENS *root_token, char* token, int key);
 void set_token_type(TOKENS *node, char *token);
 void append_token(TOKENS *root_token, TOKENS *new_node);
 void tokenize_others(TOKENS *root_token);
+void analyze_tokens(TOKENS *root);
+void init_analyze_token(TOKENS *root);
+int remains_to_be_analyzed(TOKENS *root);
 int check_split(char c);
 int is_type_token(char *token);
 int is_num_token(char *token);
 
 /**
  *  @brief ENTRY POINT
- *  modify codes here
- *  @return codeに中間言語を格納する
+ *  tokenize original codes here
  */
 void decomposer(char code[][SIZE], int codenum)
 {
@@ -56,15 +59,143 @@ void decomposer(char code[][SIZE], int codenum)
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
         set_token_type(iter, iter->value);
     }
+    // 2回目
+    for(TOKENS *iter = root; iter != NULL; iter = iter->next){
+        /* --- 2回目，あとを読んで決定 --- */
+        if(iter->type == LATER) {
+            if(iter->next->type == LPAREN) {
+                iter->type = FUNC;
+            }else if(iter->next->type == LBRACKET) {
+                iter->type = ARRAY;
+            }else{
+                iter->type = VAR;
+            }
+        }
+    }
+
 
 #ifdef DEBUG
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
         printf("token: <%s>, type: <%d>\n", iter->value, iter->type);
     }
+    printf("\n");
 #endif
 
 /* --- TOKENIZER(PARSER) --- */
+    analyze_tokens(root);
 
+}
+
+/**
+ * @brief entry point of parser
+ */
+void analyze_tokens(TOKENS *root)
+{
+    init_analyze_token(root);
+    printf("--- tokens_analyzer ---\n");
+
+#ifdef DEBUG
+    for(TOKENS *iter = root; iter != NULL; iter = iter->next){
+        printf(" '%s' ", iter->value);
+        if(strcmp(iter->value, ";") == 0 || strcmp(iter->value, "{") == 0 || strcmp(iter->value, "}") == 0) printf("\n");
+    }
+    printf("\n");
+#endif
+
+/* --- main関数単体を解析済にする仮の処理 --- */
+    /* TODO: 暫定的にmain関数のみかつ関数内に関数がないと仮定 */
+    // struct func *mainfunc = (struct func*)malloc(sizeof(struct func));
+    // mainfunc->arg_head = (struct statement*)malloc(sizeof(struct statement));
+    int search_func_paren = 0;
+    for(TOKENS *iter = root; iter != NULL; iter = iter->next){
+        if(iter->mark_as_decoded == 1) continue;
+        int ty = iter->type;
+        int nextty = iter->next->type;
+        if(ty == TYPE && nextty == FUNC) {
+            printf("func detected\n");
+            iter->mark_as_decoded = 1;                  // int
+            iter->next->mark_as_decoded = 1;            // main
+            // strcpy(mainfunc->name, iter->next->value);
+            /* 関数の場合，'{'まで各情報を解析．"int main(void) {"など */
+            for(TOKENS *funciter = iter->next->next; funciter != NULL; funciter = funciter->next){
+                printf("funciter %s\n", funciter->value);
+                funciter->mark_as_decoded = 1;
+                if(funciter->type == LBRACE) break;
+
+                // if(funciter->type == TYPE) strcpy(mainfunc->arg_head->token_head->value, funciter); // (void)
+            }
+        }
+        if(iter->type == LBRACE) {
+            search_func_paren++;
+            printf("detect { , %d\n", search_func_paren);
+        }
+        if(iter->type == RBRACE) {
+            if(search_func_paren == 0){
+                iter->mark_as_decoded = 1;  /* int main(void){ '}'を見つけた */
+                printf("detect final }, %d\n", search_func_paren);
+                break;
+            }else{
+                search_func_paren--;
+                printf("detect } , %d\n", search_func_paren);
+            }
+        }
+    }
+    printf("main decoded\n");
+
+/* ---本来の解析系 --- */
+    TOKENS *token_iter;
+    while(remains_to_be_analyzed(root)) { // 全てのトークンが解析済でなければ解析
+        for(token_iter = root; token_iter != NULL; token_iter = token_iter->next){
+            if(token_iter->mark_as_decoded == 1) continue; // 解析済のトークンはスキップ
+            int current_token_type = token_iter->type;
+            int next_token_type = token_iter->next->type;   // LL(1)
+
+/* --- 関数内の全てのトークンに対し，解析を行う --- */
+            // TODO: 本当は関数ごとに解析を行いたい．関数xを見つけたら，関数内が全てmark_as_decodedになるまで解析し，x内のデータ構造に格納していく
+            // TODO: 暫定的にmain関数のみと仮定し，関数内の要素を解析していく
+            switch(current_token_type){
+                case TYPE:
+                    // if(next_token_type == FUNC)
+                    if(next_token_type == VAR)
+                    if(next_token_type == ARRAY)
+                    break;
+                case FOR:   // for文
+                    break;
+                case WHILE: // while文
+                    break;
+                case IF:    // if文
+                    break;
+                case RET:   // return文
+                    break;
+                default:    // normal文(assign, declare等)
+                    break;
+            }
+        }
+    }
+
+}
+
+/**
+ * @brief mark_as_decodedが0のものが残って入れば1
+ */
+int remains_to_be_analyzed(TOKENS *root)
+{
+    int remain = 0; // mark_as_decodedが0であるトークンの数
+    for(TOKENS *token_iter = root; token_iter != NULL; token_iter = token_iter->next){
+        if(token_iter->mark_as_decoded != 1) remain++;
+    }
+
+    return (remain == 0) ? 0 : 1;
+}
+
+/**
+ * @brief 各トークンを未解析状態に設定
+ */
+void init_analyze_token(TOKENS *root)
+{
+    for(TOKENS *token_iter = root; token_iter != NULL; token_iter = token_iter->next){
+        token_iter->mark_as_decoded = 0;
+    }
 }
 
 /**
@@ -307,14 +438,8 @@ void set_token_type(TOKENS *token_node, char *token)
             token_node->type = ASSIGN;
             break;
         default:
-            // それ以外をfunc, array, varに割り当て
-            if(token_node->next->type == LPAREN) {
-                token_node->type = FUNC;
-            }else if(token_node->next->type == LBRACKET) {
-                token_node->type = ARRAY;
-            }else{
-                token_node->type = VAR;
-            }
+            token_node->type = LATER;
+            // 後でfunc, array, varに割り当て
             break;
     }
 }

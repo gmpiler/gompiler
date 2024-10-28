@@ -20,6 +20,7 @@ typedef enum token_type {
     IF,
 
 /* --- 後を読んで決定するもの --- */
+    LATER,
     ARRAY,
     FUNC,
     VAR,
@@ -33,4 +34,5 @@ typedef struct tokens {
     char value[MAX_TOKEN_LENGTH]; // 変数名はひとまず長さ256まで
     struct tokens *prev;
     struct tokens *next;
+    int mark_as_decoded;
 } TOKENS;
