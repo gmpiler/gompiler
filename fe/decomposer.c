@@ -24,8 +24,8 @@ int remains_to_be_analyzed(TOKENS *root);
 int check_split(char c);
 int is_type_token(char *token);
 int is_num_token(char *token);
-void append_func(FUNCS *func_head, FUNCS *new_func);
-void set_func_type(FUNCS *func, char *type);
+void append_func(Funcs *func_head, Funcs *new_func);
+void set_func_type(Funcs *func, char *type);
 void print_token_type(int type);
 
 /**
@@ -58,9 +58,12 @@ void decomposer(char code[][SIZE], int codenum)
     // カッコやカンマ対応
     tokenize_others(root);
 
-    // 切り出したトークンのタイプを設定する
+    // 切り出したトークンのタイプを設定する．ついでにエントリを登録
+    int entry_no = 0;
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
         set_token_type(iter, iter->value);
+        iter->entry = entry_no;
+        entry_no++;
     }
     // 2回目
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
@@ -100,7 +103,7 @@ void analyze_tokens(TOKENS *root)
     printf("--- tokens_analyzer ---\n");
 /* ---トークンの解析系 --- */
     TOKENS  *token_iter;
-    FUNCS   *func_head = (FUNCS*)malloc(sizeof(FUNCS));
+    Funcs   *func_head = (Funcs*)malloc(sizeof(Funcs));
     func_head->type = F_ROOT;
     /**
      * @brief 全てのトークンを解析する
@@ -113,9 +116,9 @@ void analyze_tokens(TOKENS *root)
     while(remains_to_be_analyzed(root)) { // 全てのトークンが解析済でなければ解析
         for(token_iter = root; token_iter != NULL; token_iter = token_iter->next){
             if(token_iter->mark_as_decoded == 1) continue; // 解析済のトークンはスキップ
-            printf("T: %s (%d)\n", token_iter->value, token_iter->mark_as_decoded);
     /* --- 以下，未解析のトークンに対する処理 --- */
             /* 解析情報 */
+            int nest_level = 0;
             int current_token_type = token_iter->type;
             int next_token_type = (token_iter->next == NULL) ? -1 : token_iter->next->type;   // LL(1)
 
@@ -130,76 +133,89 @@ void analyze_tokens(TOKENS *root)
              * func_token_iter
              */
             if(token_iter->type == TYPE && token_iter->next->type == FUNC) {
-                FUNCS *new_func = (FUNCS*)malloc(sizeof(FUNCS));
+                Funcs *new_func = (Funcs*)malloc(sizeof(Funcs));
                 set_func_type(new_func, token_iter->value);
                 strcpy(new_func->name, token_iter->next->value);
+                Block *root_block = (Block*)malloc(sizeof(Block));
+                new_func->block_head = root_block;
+
                 printf(">> In function <%s> ...\n", new_func->name);
 
-                int detect_the_last_rbrace = 0;
-                int stm_start_flg = 0;
+                int last_level = 0;
+                int level_changed = 0;
                 for(TOKENS *func_token_iter = token_iter; func_token_iter != NULL; func_token_iter = func_token_iter->next) {
                     func_token_iter->mark_as_decoded = 1;
-                    /* 引数対応処理 */
-                    if(stm_start_flg == 0 && (func_token_iter->type == LPAREN && func_token_iter->next->type != RPAREN)) {; // 初めての<(>の時で，"()"を除く
-                        strcpy(new_func->arg, func_token_iter->next->value); // ひとまず(void)のみ対応
-                    }
-                /* 関数内トークンの解析 */
-                    if(stm_start_flg == 1) {    // 関数内のステートメントを表すトークンの解析
+                    func_token_iter->level = nest_level;
 #ifdef DEBUG
-                        printf("\t%s ", func_token_iter->value);
-                        if(func_token_iter->type == SEMICOLON || func_token_iter->type == RBRACE) printf("\n");
+                    printf("[%d]: %s\n", func_token_iter->level, func_token_iter->value);
 #endif
-                        int func_stm = func_token_iter->type;
-                        /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
-                        switch(func_stm) {
-                            case TYPE:  // 宣言のみ
-                                break;
-                            case VAR:   // assign
-                                break;
-                            case ARRAY: // assign
-                                break;
-                            case IF:    // if
-                                break;
-                            case FOR:   // for
-                                break;
-                            case WHILE: // while
-                                break;
-                            case RET:   // return
-                                break;
-                            case FUNC:  // 関数の利用
-                                break;
-                            default:
-                                // printf("[!] function %s contains illegal statement\n", new_func->name);
-                                // assert(1);
-                                break;
-                        }
-
-                    }
-
-                /* 以下，関数の<}>を検知したらbreakする処理 */
+                    /* 以下，関数の<}>を検知したらbreakする処理 */
                     /**
-                     * type func (args) {       <- level 0 (detect_the_last_rbrace == 0)
+                     * type func (args) {       <- level 0 (nest_level == 0)
                      *      for() {                 <- level 1
                      *                                  ...
                      *      }                       <- level 1
                      * }                        <- level 0
                      */
                     if(func_token_iter->type == LBRACE) {
-                        stm_start_flg = 1;
-                        detect_the_last_rbrace++;
+                        nest_level++;
+                        continue;
                     }
                     if(func_token_iter->type == RBRACE) {
-                        if(detect_the_last_rbrace == 1){
+                        if(nest_level == 1){
                             printf(">> detect the last part of function\n");
                             func_token_iter->mark_as_decoded = 1;  /* level 0な'}'を見つけた */
                             break;
-                        }else if(detect_the_last_rbrace > 1){
-                            detect_the_last_rbrace--;
+                        }else if(nest_level > 1){
+                            nest_level--;
                         }else{  // レベルがずれている
                             printf("the number of brace is illegal\n");
                             assert(1);
                         }
                     }
+
+                    /* 引数対応処理 */
+                    if(nest_level == 0 && (func_token_iter->type == LPAREN && func_token_iter->next->type != RPAREN)) {; // 初めての<(>の時で，"()"を除く
+                        strcpy(new_func->arg, func_token_iter->next->value); // ひとまず(void)のみ対応
+                    }
+
+                    /* 関数内トークンの解析 */
+                    if(nest_level >= 1) {    // 関数内のステートメントを表すトークンの解析
+                        if(func_token_iter->level == last_level) {      // like 1 -> 1
+                            level_changed = 0;
+                        }else if(func_token_iter->level > last_level){  // like 1 -> 2
+                            level_changed = 1;
+                        }else{                                          // like 2 -> 1
+                            level_changed = -1;
+                        }
+                        // set_all_tokens_to_block(root_block, func_token_iter);
+                        // int func_stm = func_token_iter->type;
+                        // /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
+                        // switch(func_stm) {
+                        //     case TYPE:  // 宣言のみ
+                        //         break;
+                        //     case VAR:   // assign
+                        //         break;
+                        //     case ARRAY: // assign
+                        //         break;
+                        //     case IF:    // if
+                        //         break;
+                        //     case FOR:   // for
+                        //         break;
+                        //     case WHILE: // while
+                        //         break;
+                        //     case RET:   // return
+                        //         break;
+                        //     case FUNC:  // 関数の利用
+                        //         break;
+                        //     default:
+                        //         // printf("[!] function %s contains illegal statement\n", new_func->name);
+                        //         // assert(1);
+                        //         break;
+                        // }
+
+                    }
+                    last_level = func_token_iter->level;
                 }
                 append_func(func_head, new_func);
             }
@@ -209,93 +225,6 @@ void analyze_tokens(TOKENS *root)
     }
 
 }
-// void analyze_tokens(TOKENS *root)
-// {
-//     init_analyze_token(root);
-//     printf("--- tokens_analyzer ---\n");
-
-// #ifdef DEBUG
-//     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
-//         printf(" '%s' ", iter->value);
-//         if(strcmp(iter->value, ";") == 0 || strcmp(iter->value, "{") == 0 || strcmp(iter->value, "}") == 0) printf("\n");
-//     }
-//     printf("\n");
-// #endif
-
-// /* --- main関数単体を解析済にする仮の処理 --- */
-//     /* TODO: 暫定的にmain関数のみかつ関数内に関数がないと仮定 */
-//     struct func *mainfunc = (struct func*)malloc(sizeof(struct func));
-//     mainfunc->arg_head = (struct statement*)malloc(sizeof(struct statement));
-//     int search_func_paren = 0;
-//     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
-//         printf(">> @Token %s(%d), ...\n", iter->value, iter->mark_as_decoded);
-//         if(iter->mark_as_decoded == 1) continue;
-//         int ty = iter->type;
-//         int nextty = (iter->next == NULL) ? -1 : iter->next->type;
-//         if(ty == TYPE && nextty == FUNC) {
-//             printf("func detected\n");
-//             iter->mark_as_decoded = 1;                  // int
-//             iter->next->mark_as_decoded = 1;            // main
-//             strcpy(mainfunc->name, iter->next->value);
-//             /* 関数の場合，'{'まで各情報を解析．"int main(void) {"など */
-//             for(TOKENS *funciter = iter->next->next; funciter != NULL; funciter = funciter->next){
-//                 printf("funciter %s\n", funciter->value);
-//                 funciter->mark_as_decoded = 1;
-//                 if(funciter->type == LBRACE) break;
-
-//                 if(funciter->type == TYPE) strcpy(mainfunc->arg_head->token_head->value, funciter); // (void)
-//             }
-//         }
-//         if(iter->type == LBRACE) {
-//             search_func_paren++;
-//             printf("detect { , %d\n", search_func_paren);
-//         }
-//         if(iter->type == RBRACE) {
-//             printf("sfp: %d\n", search_func_paren);
-//             if(search_func_paren == 0){
-//                 iter->mark_as_decoded = 1;  /* int main(void){ '}'を見つけた */
-//                 printf("detect final }, %d\n", search_func_paren);
-//                 break;
-//             }else{
-//                 search_func_paren--;
-//                 printf("detect } , %d\n", search_func_paren);
-//             }
-//         }
-//     }
-//     printf("main decoded\n");
-
-// /* ---本来の解析系 --- */
-//     TOKENS *token_iter;
-//     while(remains_to_be_analyzed(root)) { // 全てのトークンが解析済でなければ解析
-//         for(token_iter = root; token_iter != NULL; token_iter = token_iter->next){
-//             if(token_iter->mark_as_decoded == 1) continue; // 解析済のトークンはスキップ
-//             int current_token_type = token_iter->type;
-//             int next_token_type = token_iter->next->type;   // LL(1)
-
-// /* --- 関数内の全てのトークンに対し，解析を行う --- */
-//             // TODO: 本当は関数ごとに解析を行いたい．関数xを見つけたら，関数内が全てmark_as_decodedになるまで解析し，x内のデータ構造に格納していく
-//             // TODO: 暫定的にmain関数のみと仮定し，関数内の要素を解析していく
-//             switch(current_token_type){
-//                 case TYPE:
-//                     // if(next_token_type == FUNC)
-//                     if(next_token_type == VAR)
-//                     if(next_token_type == ARRAY)
-//                     break;
-//                 case FOR:   // for文
-//                     break;
-//                 case WHILE: // while文
-//                     break;
-//                 case IF:    // if文
-//                     break;
-//                 case RET:   // return文
-//                     break;
-//                 default:    // normal文(assign, declare等)
-//                     break;
-//             }
-//         }
-//     }
-
-// }
 
 /**
  * @brief デバッグ用．トークンタイプをデコードする．
@@ -354,6 +283,9 @@ void print_token_type(int type)
         case IF:
             strcpy(decoded_string, "IF");
             break;
+        case ELSE:
+            strcpy(decoded_string, "ELSE");
+            break;
         case LATER:
             strcpy(decoded_string, "LATER");
             break;
@@ -366,6 +298,12 @@ void print_token_type(int type)
         case VAR:
             strcpy(decoded_string, "VAR");
             break;
+        case LT:
+            strcpy(decoded_string, "LT");
+            break;
+        case GT:
+            strcpy(decoded_string, "GT");
+            break;
         case UNDEC:
             strcpy(decoded_string, "UNDEC");
             break;
@@ -374,7 +312,7 @@ void print_token_type(int type)
     printf("%s", decoded_string);
 }
 
-void set_func_type(FUNCS *func, char *type)
+void set_func_type(Funcs *func, char *type)
 {
     if(strcmp(type, "void") == 0) {
         func->type = F_VOID;
@@ -450,6 +388,12 @@ int check_split(char c)
             ret = 1;
             break;
         case '/':
+            ret = 1;
+            break;
+        case '<':
+            ret = 1;
+            break;
+        case '>':
             ret = 1;
             break;
 
@@ -555,9 +499,9 @@ void append_token(TOKENS *root_token, TOKENS *new_node)
 /**
  * @brief funcs構造体をheadにappend
  */
-void append_func(FUNCS *func_head, FUNCS *new_func)
+void append_func(Funcs *func_head, Funcs *new_func)
 {
-    FUNCS *iter = func_head;
+    Funcs *iter = func_head;
     while(iter->next != NULL){
         iter = iter->next;
     }
@@ -621,6 +565,10 @@ void set_token_type(TOKENS *token_node, char *token)
         token_node->type = IF;
         return;
     }
+    if(strcmp(token, "else") == 0) {
+        token_node->type = ELSE;
+        return;
+    }
     if(strcmp(token, "while") == 0) {
         token_node->type = WHILE;
         return;
@@ -667,6 +615,12 @@ void set_token_type(TOKENS *token_node, char *token)
             break;
         case '=':
             token_node->type = ASSIGN;
+            break;
+        case '<':
+            token_node->type = LT;
+            break;
+        case '>':
+            token_node->type = GT;
             break;
         default:
             token_node->type = LATER;

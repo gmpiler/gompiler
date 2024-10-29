@@ -18,6 +18,9 @@ typedef enum token_type {
     FOR,
     WHILE,
     IF,
+    ELSE,
+    GT,             // >
+    LT,             // <
 
 /* --- 後を読んで決定するもの --- */
     LATER,
@@ -30,6 +33,8 @@ typedef enum token_type {
 } TOKEN_TYPE;
 
 typedef struct tokens {
+    int entry;
+    int level;
     TOKEN_TYPE type;
     char value[MAX_TOKEN_LENGTH]; // 変数名はひとまず長さ256まで
     struct tokens *prev;

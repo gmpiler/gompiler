@@ -22,6 +22,12 @@ enum func_type {
     F_OTHERS
 };
 
+enum block_type {
+    B_BASIC,
+    B_LOOP,
+    B_OTHERS
+};
+
 typedef struct statement {
     enum stm_type type;
     struct tokens *token_head;
@@ -38,12 +44,14 @@ typedef struct func {
     char arg[MAX_TOKENNAME_SIZE];   // ゆくゆく複数引数対応
     struct func *prev;
     struct func *next;
-} FUNCS;
+} Funcs;
 
 typedef struct block {
+    enum   block_type;
     struct statement *stm_head;
+    struct tokens *token_head;
     struct block *prev;
     struct block *next;
-};
+} Block;
 
 #endif
