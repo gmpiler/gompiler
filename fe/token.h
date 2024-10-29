@@ -3,7 +3,7 @@
 typedef enum token_type {
 /* --- 1発で確定できるもの --- */
     LPAREN,
-    RPALEN,
+    RPAREN,
     LBRACKET,
     RBRACKET,
     LBRACE,

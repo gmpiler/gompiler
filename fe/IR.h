@@ -12,6 +12,16 @@ enum stm_type {
     S_COMMENT
 };
 
+enum func_type {
+    F_ROOT,
+    F_VOID,
+    F_INT,
+    F_FLOAT,
+    F_DOUBLE,
+    F_HALF,
+    F_OTHERS
+};
+
 typedef struct statement {
     enum stm_type type;
     struct tokens *token_head;
@@ -23,15 +33,16 @@ typedef struct block {
     struct statement *stm_head;
     struct block *prev;
     struct block *next;
-    struct block *inner;
-    struct block *outer;
 };
 
 typedef struct func {
+    enum func_type type;            // root以外は関数の型
     char name[MAX_TOKENNAME_SIZE];
     struct block *block_head;
     struct statement *arg_head;
-};
+    struct func *prev;
+    struct func *next;
+} FUNCS;
 
 typedef struct sourcecode {
     struct func *func_head;
