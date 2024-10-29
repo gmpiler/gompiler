@@ -27,25 +27,23 @@ typedef struct statement {
     struct tokens *token_head;
     struct statement *prev;
     struct statement *next;
-};
-
-typedef struct block {
-    struct statement *stm_head;
-    struct block *prev;
-    struct block *next;
+    struct statement *inner;
+    struct statement *outer;
 };
 
 typedef struct func {
     enum func_type type;            // root以外は関数の型
     char name[MAX_TOKENNAME_SIZE];
     struct block *block_head;
-    struct statement *arg_head;
+    char arg[MAX_TOKENNAME_SIZE];   // ゆくゆく複数引数対応
     struct func *prev;
     struct func *next;
 } FUNCS;
 
-typedef struct sourcecode {
-    struct func *func_head;
+typedef struct block {
+    struct statement *stm_head;
+    struct block *prev;
+    struct block *next;
 };
 
 #endif

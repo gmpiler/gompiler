@@ -130,17 +130,49 @@ void analyze_tokens(TOKENS *root)
              * func_token_iter
              */
             if(token_iter->type == TYPE && token_iter->next->type == FUNC) {
-                printf(">> In function <%s> ...\n", token_iter->next->value);
                 FUNCS *new_func = (FUNCS*)malloc(sizeof(FUNCS));
                 set_func_type(new_func, token_iter->value);
+                strcpy(new_func->name, token_iter->next->value);
+                printf(">> In function <%s> ...\n", new_func->name);
+
                 int detect_the_last_rbrace = 0;
                 int stm_start_flg = 0;
                 for(TOKENS *func_token_iter = token_iter; func_token_iter != NULL; func_token_iter = func_token_iter->next) {
                     func_token_iter->mark_as_decoded = 1;
+                    /* 引数対応処理 */
+                    if(stm_start_flg == 0 && (func_token_iter->type == LPAREN && func_token_iter->next->type != RPAREN)) {; // 初めての<(>の時で，"()"を除く
+                        strcpy(new_func->arg, func_token_iter->next->value); // ひとまず(void)のみ対応
+                    }
                 /* 関数内トークンの解析 */
                     if(stm_start_flg == 1) {    // 関数内のステートメントを表すトークンの解析
+#ifdef DEBUG
                         printf("\t%s ", func_token_iter->value);
                         if(func_token_iter->type == SEMICOLON || func_token_iter->type == RBRACE) printf("\n");
+#endif
+                        int func_stm = func_token_iter->type;
+                        /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
+                        switch(func_stm) {
+                            case TYPE:  // 宣言のみ
+                                break;
+                            case VAR:   // assign
+                                break;
+                            case ARRAY: // assign
+                                break;
+                            case IF:    // if
+                                break;
+                            case FOR:   // for
+                                break;
+                            case WHILE: // while
+                                break;
+                            case RET:   // return
+                                break;
+                            case FUNC:  // 関数の利用
+                                break;
+                            default:
+                                // printf("[!] function %s contains illegal statement\n", new_func->name);
+                                // assert(1);
+                                break;
+                        }
 
                     }
 

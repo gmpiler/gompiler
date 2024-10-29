@@ -1,3 +1,8 @@
+void func(){
+    int local;
+    local = 2;
+}
+
 int main(void)
 {
     int a;
@@ -17,3 +22,4 @@ int main(void)
     }
     return 0;
 }
+
