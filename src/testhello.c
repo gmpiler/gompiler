@@ -18,6 +18,10 @@ int main(void)
     for(i = 0; i < 10; i++) {
         for(k=0; k<10; k++){
             a = a + i;
+            if(a > 0) {
+                a =2;
+            }
+            a = 3;
         }
         a = 2;
     }
@@ -28,6 +32,7 @@ int main(void)
     if(b > 0){
         a = 2;
     }
+    
     return 0;
 }
 
