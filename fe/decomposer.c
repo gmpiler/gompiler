@@ -197,19 +197,24 @@ void analyze_tokens(TOKENS *root)
 
                         /* レベルに対応したブロック構造を作成 */
                         if(level_changed > 0) {         // current_blockから1レベルネストする
+                            Block *next_block = (Block*)malloc(sizeof(Block));
+                            next_block->type = B_LOOP; // 暫定
+                            next_block->level = nest_level;
+                            append_block(current_block, next_block, 2);
                             Block *new_inner_block = (Block*)malloc(sizeof(Block));
-                            new_inner_block->level = nest_level;
+                            new_inner_block->level = nest_level + 1;
                             TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
                             strcpy(root_token->value, func_token_iter->value);
                             root_token->type = func_token_iter->type;
                             new_inner_block->token_head = root_token;
-                            append_block(current_block, new_inner_block, 3);
+                            append_block(next_block, new_inner_block, 3);
                             current_block = new_inner_block;
                             last_level = func_token_iter->level;
                             continue;
                         }else if(level_changed < 0){    // 1レベルネストした状態から戻ってくる
                             Block *new_outer_block_next = (Block*)malloc(sizeof(Block));
                             new_outer_block_next->level = nest_level;
+                            new_outer_block_next->type = B_BASIC;
                             TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
                             strcpy(root_token->value, func_token_iter->value);
                             root_token->type = func_token_iter->type;
@@ -284,6 +289,8 @@ void analyze_tokens(TOKENS *root)
 
 /**
  * @brief ブロックappend操作．1つ後．
+ * 
+ * @param opt(1: prev, 2: next, 3: inner, 4: outer)
  */
 void append_block(Block *current_block, Block *new_block, int opt)
 {
