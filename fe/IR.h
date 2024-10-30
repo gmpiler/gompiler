@@ -23,6 +23,7 @@ enum func_type {
 };
 
 enum block_type {
+    B_ROOT,
     B_BASIC,
     B_LOOP,
     B_OTHERS
@@ -47,7 +48,7 @@ typedef struct func {
 } Funcs;
 
 typedef struct block {
-    enum   block_type;
+    enum   block_type type;
     int    level;                   // 階層情報
     struct statement *stm_head;
     struct tokens *token_head;
