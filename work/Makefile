@@ -1,3 +1,6 @@
+# Directory
+MAKEFILE_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 # Tools
 CC = gcc
 
@@ -11,7 +14,6 @@ all:
 
 # Compile source file
 	./fe ../src/$(FILENAME).c $(FILENAME).ir
-
 
 # Clean
 clean:

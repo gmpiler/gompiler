@@ -27,6 +27,7 @@ int is_num_token(char *token);
 void append_func(Funcs *func_head, Funcs *new_func);
 void set_func_type(Funcs *func, char *type);
 void print_token_type(int type);
+void append_block(Block *current_block, Block *new_block, int opt);
 
 /**
  *  @brief ENTRY POINT
@@ -137,7 +138,10 @@ void analyze_tokens(TOKENS *root)
                 set_func_type(new_func, token_iter->value);
                 strcpy(new_func->name, token_iter->next->value);
                 Block *root_block = (Block*)malloc(sizeof(Block));
+                TOKENS *root_token_base = (TOKENS*)malloc(sizeof(TOKENS));
+                root_block->token_head = root_token_base;
                 new_func->block_head = root_block;
+                root_block->level = 0;
 
                 printf(">> In function <%s> ...\n", new_func->name);
 
@@ -180,14 +184,41 @@ void analyze_tokens(TOKENS *root)
                     }
 
                     /* 関数内トークンの解析 */
+                    Block *current_block = root_block;
                     if(nest_level >= 1) {    // 関数内のステートメントを表すトークンの解析
+                        /* current blockを常に参照し，levelの上下によりstmをappendするblockのレベル(inner, outer)も変わるという設計方針で行く */
                         if(func_token_iter->level == last_level) {      // like 1 -> 1
                             level_changed = 0;
-                        }else if(func_token_iter->level > last_level){  // like 1 -> 2
-                            level_changed = 1;
-                        }else{                                          // like 2 -> 1
-                            level_changed = -1;
+                        }else{
+                            level_changed = (func_token_iter->level > last_level) ? 1 : -1; // like 1 -> 2 | 2 -> 1
                         }
+
+                        /* レベルに対応したブロック構造を作成 */
+                        if(level_changed > 0) {         // current_blockから1レベルネストする
+                            Block *new_inner_block = (Block*)malloc(sizeof(Block));
+                            new_inner_block->level = nest_level;
+                            TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
+                            strcpy(root_token->value, func_token_iter->value);
+                            new_inner_block->token_head = root_token;
+                            append_block(current_block, new_inner_block, 3);
+                            current_block = new_inner_block;
+                            continue;
+                        }else if(level_changed < 0){    // 1レベルネストした状態から戻ってくる
+                            Block *new_outer_block_next = (Block*)malloc(sizeof(Block));
+                            new_outer_block_next->level = nest_level;
+                            TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
+                            strcpy(root_token->value, func_token_iter->value);
+                            new_outer_block_next->token_head = root_token;
+                            append_block(current_block->outer, new_outer_block_next, 2);
+                            current_block = new_outer_block_next;
+                            continue;
+                        }
+
+                        /* 作成したブロックにトークンを入れ込んでいくことで，トークンを構造ごとに分割 */
+                        TOKENS *new_token_copy = (TOKENS*)malloc(sizeof(TOKENS));
+                        strcpy(new_token_copy->value, func_token_iter->value);
+                        append_token(current_block->token_head, new_token_copy);
+
                         // set_all_tokens_to_block(root_block, func_token_iter);
                         // int func_stm = func_token_iter->type;
                         // /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
@@ -224,6 +255,48 @@ void analyze_tokens(TOKENS *root)
         }
     }
 
+/* --- 各ブロックのトークンの構造解析 --- */
+#ifdef DEBUG
+    printf("--- Block ---\n");
+    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+        printf(">> Function %s\n", func_iter->name);
+        for(Block *block_iter = func_iter->block_head; block_iter != NULL; block_iter = block_iter->inner){
+            printf("\t%d\n", block_iter->level);
+            for(TOKENS *token_iter = block_iter->token_head; token_iter != NULL; token_iter = token_iter->next){
+                printf("[%d]: %s\n", block_iter->level, token_iter->value);
+            }
+        }
+    }
+#endif
+}
+
+/**
+ * @brief ブロックappend操作．1つ後．
+ */
+void append_block(Block *current_block, Block *new_block, int opt)
+{
+    switch(opt) {
+        case 1:     // prev
+            current_block->prev    = new_block;
+            new_block->next        = current_block;
+            break;
+        case 2:     // next
+            current_block->next    = new_block;
+            new_block->prev        = current_block;
+            break;
+        case 3:     // inner
+            current_block->inner    = new_block;
+            new_block->outer        = current_block;
+            break;
+        case 4:     // outer
+            current_block->outer   = new_block;
+            new_block->inner       = current_block;
+            break;
+        default:
+            printf("wrong append option\n");
+            assert(1);
+            break;
+    };
 }
 
 /**

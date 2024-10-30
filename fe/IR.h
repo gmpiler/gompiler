@@ -48,10 +48,13 @@ typedef struct func {
 
 typedef struct block {
     enum   block_type;
+    int    level;                   // 階層情報
     struct statement *stm_head;
     struct tokens *token_head;
     struct block *prev;
     struct block *next;
+    struct block *inner;
+    struct block *outer;
 } Block;
 
 #endif

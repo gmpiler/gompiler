@@ -9,18 +9,19 @@
             "type": "cppdbg",
             "request": "launch",
             //mmpの場所
-            "program": "/mnt/c/Users/user/Desktop/github成果物/compiler/work/fe",
+            "program": "C:\\Users\\sota0\\OneDrive\\デスクトップ\\work@github\\compiler\\work\\fe",
             //引数．オプションなどを都度変更
             "args": [
-                "/mnt/c/Users/user/Desktop/github成果物/compiler/testhello.c",
-                "/mnt/c/Users/user/Desktop/github成果物/compiler/testhello.ir",
-                "/mnt/c/Users/user/Desktop/github成果物/compiler/src/testhello.c" //かつてはqがbqだったらしい
+                "testhello.c",
+                "testhello.ir",
+                "testhello.c" //かつてはqがbqだったらしい
             ],
             "stopAtEntry": false,
-            "cwd": "/mnt/c/Users/user/Desktop/github成果物/compiler/work", //カレントリワーキングディレクトリ
+            "cwd": "C:\\Users\\sota0\\OneDrive\\デスクトップ\\work@github\\compiler\\work", //カレントリワーキングディレクトリ
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

@@ -19,6 +19,7 @@ int main(void)
         for(k=0; k<10; k++){
             a = a + i;
         }
+        a = 2;
     }
     while(j < 10){
         b = a + j;
