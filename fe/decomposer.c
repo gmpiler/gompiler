@@ -29,6 +29,7 @@ void set_func_type(Funcs *func, char *type);
 void print_token_type(int type);
 void append_block(Block *current_block, Block *new_block, int opt);
 void create_func(Funcs *new_func, char *type, char *name);
+TOKENS *search_block_maker(TOKENS *token, int vector);
 
 /**
  *  @brief ENTRY POINT
@@ -188,42 +189,83 @@ void analyze_tokens(TOKENS *root)
                             level_changed = (func_token_iter->level > last_level) ? 1 : -1; // like 1 -> 2 | 2 -> 1
                         }
 
+                        TOKENS *block_maker = search_block_maker(func_token_iter, 0);
+
                         /* レベルに対応したブロック構造を作成 */
                         if(level_changed > 0) {         // current_blockから1レベルネストする
-                            Block *next_block = (Block*)malloc(sizeof(Block));
-                            next_block->type = B_LOOP; // 暫定
-                            next_block->level = nest_level;
-                            append_block(current_block, next_block, 2);
-                            Block *new_inner_block = (Block*)malloc(sizeof(Block));
-                            new_inner_block->level = nest_level + 1;
-                            new_inner_block->type = B_BASIC;
-                            TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
-                            strcpy(root_token->value, func_token_iter->value);
-                            root_token->type = func_token_iter->type;
-                            new_inner_block->token_head = root_token;
-                            append_block(next_block, new_inner_block, 3);
-                            current_block = new_inner_block;
-                            last_level = func_token_iter->level;
-                            continue;
+                            switch(block_maker->type) {
+                                case FUNC:  // B_BASICなnextだけ作る
+                                    {
+                                    Block *block = (Block*)malloc(sizeof(Block));
+                                    block->type = B_BASIC;
+                                    block->level = nest_level;
+                                    TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
+                                    strcpy(root_token->value, func_token_iter->value);
+                                    root_token->type = func_token_iter->type;
+                                    block->token_head = root_token;
+                                    append_block(current_block, block, 2);
+                                    current_block = block;
+                                    last_level = func_token_iter->level;
+                                    }
+                                    continue;
+                                case IF:    // IF, FOR, WHILEなBLOCK直下にB_BASICなBLOCKを生成
+                                case FOR:
+                                case WHILE:
+                                    {
+                                    Block *next_block = (Block*)malloc(sizeof(Block));
+                                    next_block->type = block_maker->type;
+                                    next_block->level = nest_level;
+                                    append_block(current_block, next_block, 2);
+                                    Block *new_inner_block = (Block*)malloc(sizeof(Block));
+                                    new_inner_block->level = nest_level;
+                                    new_inner_block->type = B_BASIC;
+                                    TOKENS *root_token3 = (TOKENS*)malloc(sizeof(TOKENS));
+                                    strcpy(root_token3->value, func_token_iter->value);
+                                    root_token3->type = func_token_iter->type;
+                                    new_inner_block->token_head = root_token3;
+                                    append_block(next_block, new_inner_block, 3);
+                                    current_block = new_inner_block;
+                                    last_level = func_token_iter->level;
+                                    }
+                                    continue;
+                                default:
+                                    printf("[!] unknown block maker\n");
+                                    break;
+                            }
                         }else if(level_changed < 0){    // 1レベルネストした状態から戻ってくる
-                            Block *new_outer_block_next = (Block*)malloc(sizeof(Block));
-                            new_outer_block_next->level = nest_level;
-                            new_outer_block_next->type = B_BASIC;
-                            TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
-                            strcpy(root_token->value, func_token_iter->value);
-                            root_token->type = func_token_iter->type;
-                            new_outer_block_next->token_head = root_token;
-                            append_block(current_block->outer, new_outer_block_next, 2);
-                            current_block = new_outer_block_next;
-                            last_level = func_token_iter->level;
-                            continue;
+                            switch(func_token_iter->type){  // IF, FOR, WHILEの時はcurrent_block->outerにcurrentをセットする．
+                                case IF:
+                                case FOR:
+                                case WHILE:
+                                    current_block = current_block->outer;
+                                    last_level = func_token_iter->level;
+                                    continue;
+                                default:                    // それ以外の場合はcurrent_block->outer->nextにB_BASICなブロックを設置し，current_blockとする．
+                                    {
+                                    Block *new_outer_block_next = (Block*)malloc(sizeof(Block));
+                                    new_outer_block_next->level = nest_level;
+                                    new_outer_block_next->type = B_BASIC;
+                                    TOKENS *root_token2 = (TOKENS*)malloc(sizeof(TOKENS));
+                                    strcpy(root_token2->value, func_token_iter->value);
+                                    root_token2->type = func_token_iter->type;
+                                    new_outer_block_next->token_head = root_token2;
+                                    append_block(current_block->outer, new_outer_block_next, 2);
+                                    current_block = new_outer_block_next;
+                                    last_level = func_token_iter->level;
+                                    }
+                                    continue;
+                            }
                         }
 
                         /* 作成したブロックにトークンを入れ込んでいくことで，トークンを構造ごとに分割 */
                         TOKENS *new_token_copy = (TOKENS*)malloc(sizeof(TOKENS));
                         strcpy(new_token_copy->value, func_token_iter->value);
                         new_token_copy->type = func_token_iter->type;
-                        append_token(current_block->token_head, new_token_copy);
+                        if(current_block->token_head == NULL) { // 本当は，FOR, IF, WHILEの時はinnerにappendする，といった操作が適切かも
+                            append_token(current_block->inner->token_head, new_token_copy);
+                        }else{
+                            append_token(current_block->token_head, new_token_copy);
+                        }
 
                         last_level = func_token_iter->level;
                     }
@@ -281,6 +323,41 @@ void analyze_tokens(TOKENS *root)
     // }
 }
 
+/* <{>を生成するtokenの直前のトークン(func, if, for, while)を返す */
+TOKENS *search_block_maker(TOKENS *token, int vector)
+{
+    if(vector == 0) {   // tokenより前を探索
+        if(token->prev == NULL) return NULL;
+        for(TOKENS *iter = token->prev; iter != NULL; iter = iter->prev){
+            switch(iter->type){
+                case FUNC:
+                case IF:
+                case FOR:
+                case WHILE:
+                    return iter;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }else if(vector == 1){   // tokenより後を探索
+        for(TOKENS *iter = token; iter != NULL; iter = iter->next){
+            switch(iter->type){
+                case FUNC:
+                case IF:
+                case FOR:
+                case WHILE:
+                    return iter;
+                    break;
+                default:
+                    return NULL;
+                    break;
+            }
+        }
+    }
+
+}
+
 void create_func(Funcs *new_func, char *type, char *name)
 {
         set_func_type(new_func, type);
@@ -302,30 +379,41 @@ void create_func(Funcs *new_func, char *type, char *name)
  */
 void append_block(Block *current_block, Block *new_block, int opt)
 {
-    switch(opt) {
-        case 1:     // prev
-            current_block->prev    = new_block;
-            new_block->next        = current_block;
-            new_block->outer       = current_block->outer;
-            break;
-        case 2:     // next
-            current_block->next    = new_block;
-            new_block->prev        = current_block;
-            new_block->outer       = current_block->outer;
-            break;
-        case 3:     // inner
-            current_block->inner    = new_block;
-            new_block->outer        = current_block;
-            break;
-        case 4:     // outer
-            current_block->outer   = new_block;
-            new_block->inner       = current_block;
-            break;
-        default:
-            printf("wrong append option\n");
-            assert(1);
-            break;
-    };
+    if(current_block->type == B_ROOT) {
+        current_block->type = new_block->type;
+        current_block->level = new_block->type;
+        current_block->token_head = new_block->token_head;
+        current_block->stm_head = new_block->stm_head;
+        current_block->prev = new_block->prev;
+        current_block->next = new_block->next;
+        current_block->inner = new_block->inner;
+        current_block->outer = new_block->outer;
+    }else{
+        switch(opt) {
+            case 1:     // prev
+                current_block->prev    = new_block;
+                new_block->next        = current_block;
+                new_block->outer       = current_block->outer;
+                break;
+            case 2:     // next
+                current_block->next    = new_block;
+                new_block->prev        = current_block;
+                new_block->outer       = current_block->outer;
+                break;
+            case 3:     // inner
+                current_block->inner    = new_block;
+                new_block->outer        = current_block;
+                break;
+            case 4:     // outer
+                current_block->outer   = new_block;
+                new_block->inner       = current_block;
+                break;
+            default:
+                printf("wrong append option\n");
+                assert(1);
+                break;
+        };
+    }
 }
 
 /**
