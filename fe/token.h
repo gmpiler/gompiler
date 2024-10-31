@@ -29,7 +29,8 @@ typedef enum token_type {
     VAR,
 
 /* --- その他 --- */
-    UNDEC
+    UNDEC,
+    ROOT
 } TOKEN_TYPE;
 
 typedef struct tokens {

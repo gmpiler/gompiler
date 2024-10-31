@@ -28,6 +28,7 @@ void append_func(Funcs *func_head, Funcs *new_func);
 void set_func_type(Funcs *func, char *type);
 void print_token_type(int type);
 void append_block(Block *current_block, Block *new_block, int opt);
+void create_func(Funcs *new_func, char *type, char *name);
 
 /**
  *  @brief ENTRY POINT
@@ -135,16 +136,8 @@ void analyze_tokens(TOKENS *root)
              */
             if(token_iter->type == TYPE && token_iter->next->type == FUNC) {
                 Funcs *new_func = (Funcs*)malloc(sizeof(Funcs));
-                set_func_type(new_func, token_iter->value);
-                strcpy(new_func->name, token_iter->next->value);
-                Block *root_block = (Block*)malloc(sizeof(Block));
-                new_func->block_head = root_block;
-                TOKENS *root_token_base = (TOKENS*)malloc(sizeof(TOKENS));
-                root_block->token_head = root_token_base;
-                root_block->type = B_ROOT;
-                new_func->block_head = root_block;
-                Block *current_block = root_block;
-                root_block->level = 0;
+                create_func(new_func, token_iter->value, token_iter->next->value);
+                Block *current_block = new_func->block_head;
 
                 printf(">> In function <%s> ...\n", new_func->name);
 
@@ -203,6 +196,7 @@ void analyze_tokens(TOKENS *root)
                             append_block(current_block, next_block, 2);
                             Block *new_inner_block = (Block*)malloc(sizeof(Block));
                             new_inner_block->level = nest_level + 1;
+                            new_inner_block->type = B_BASIC;
                             TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
                             strcpy(root_token->value, func_token_iter->value);
                             root_token->type = func_token_iter->type;
@@ -231,31 +225,6 @@ void analyze_tokens(TOKENS *root)
                         new_token_copy->type = func_token_iter->type;
                         append_token(current_block->token_head, new_token_copy);
 
-                        // set_all_tokens_to_block(root_block, func_token_iter);
-                        // int func_stm = func_token_iter->type;
-                        // /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
-                        // switch(func_stm) {
-                        //     case TYPE:  // 宣言のみ
-                        //         break;
-                        //     case VAR:   // assign
-                        //         break;
-                        //     case ARRAY: // assign
-                        //         break;
-                        //     case IF:    // if
-                        //         break;
-                        //     case FOR:   // for
-                        //         break;
-                        //     case WHILE: // while
-                        //         break;
-                        //     case RET:   // return
-                        //         break;
-                        //     case FUNC:  // 関数の利用
-                        //         break;
-                        //     default:
-                        //         // printf("[!] function %s contains illegal statement\n", new_func->name);
-                        //         // assert(1);
-                        //         break;
-                        // }
                         last_level = func_token_iter->level;
                     }
                     last_level = func_token_iter->level;
@@ -285,6 +254,45 @@ void analyze_tokens(TOKENS *root)
         }
     }
 #endif
+    // set_all_tokens_to_block(root_block, func_token_iter);
+    // int func_stm = func_token_iter->type;
+    // /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
+    // switch(func_stm) {
+    //     case TYPE:  // 宣言のみ
+    //         break;
+    //     case VAR:   // assign
+    //         break;
+    //     case ARRAY: // assign
+    //         break;
+    //     case IF:    // if
+    //         break;
+    //     case FOR:   // for
+    //         break;
+    //     case WHILE: // while
+    //         break;
+    //     case RET:   // return
+    //         break;
+    //     case FUNC:  // 関数の利用
+    //         break;
+    //     default:
+    //         // printf("[!] function %s contains illegal statement\n", new_func->name);
+    //         // assert(1);
+    //         break;
+    // }
+}
+
+void create_func(Funcs *new_func, char *type, char *name)
+{
+        set_func_type(new_func, type);
+        strcpy(new_func->name, name);
+        Block *root_block = (Block*)malloc(sizeof(Block));
+        new_func->block_head = root_block;
+        TOKENS *root_token_base = (TOKENS*)malloc(sizeof(TOKENS));
+        root_token_base->type = ROOT;
+        root_block->token_head = root_token_base;
+        root_block->type = B_ROOT;
+        new_func->block_head = root_block;
+        root_block->level = 0;
 }
 
 /**
