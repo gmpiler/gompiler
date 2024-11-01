@@ -25,7 +25,9 @@ enum func_type {
 enum block_type {
     B_ROOT,
     B_BASIC,
-    B_LOOP,
+    B_IF,
+    B_FOR,
+    B_WHILE,
     B_OTHERS
 };
 
@@ -56,6 +58,7 @@ typedef struct block {
     struct block *next;
     struct block *inner;
     struct block *outer;
+    struct func  *func_head;
 } Block;
 
 #endif

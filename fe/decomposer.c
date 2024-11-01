@@ -30,6 +30,7 @@ void print_token_type(int type);
 void append_block(Block *current_block, Block *new_block, int opt);
 void create_func(Funcs *new_func, char *type, char *name);
 TOKENS *search_block_maker(TOKENS *token, int vector);
+enum block_type convert_tokentype_to_blocktype(enum token_type type);
 
 /**
  *  @brief ENTRY POINT
@@ -213,7 +214,7 @@ void analyze_tokens(TOKENS *root)
                                 case WHILE:
                                     {
                                     Block *next_block = (Block*)malloc(sizeof(Block));
-                                    next_block->type = block_maker->type;
+                                    next_block->type = convert_tokentype_to_blocktype(block_maker->type);
                                     next_block->level = nest_level;
                                     append_block(current_block, next_block, 2);
                                     Block *new_inner_block = (Block*)malloc(sizeof(Block));
@@ -323,6 +324,20 @@ void analyze_tokens(TOKENS *root)
     // }
 }
 
+enum block_type convert_tokentype_to_blocktype(enum token_type type)
+{
+    switch(type){
+        case IF:
+            return B_IF;
+        case FOR:
+            return B_FOR;
+        case WHILE:
+            return B_WHILE;
+        default:
+            return B_OTHERS;
+    }
+}
+
 /* <{>を生成するtokenの直前のトークン(func, if, for, while)を返す */
 TOKENS *search_block_maker(TOKENS *token, int vector)
 {
@@ -364,6 +379,7 @@ void create_func(Funcs *new_func, char *type, char *name)
         strcpy(new_func->name, name);
         Block *root_block = (Block*)malloc(sizeof(Block));
         new_func->block_head = root_block;
+        root_block->func_head = new_func;
         TOKENS *root_token_base = (TOKENS*)malloc(sizeof(TOKENS));
         root_token_base->type = ROOT;
         root_block->token_head = root_token_base;
@@ -380,14 +396,7 @@ void create_func(Funcs *new_func, char *type, char *name)
 void append_block(Block *current_block, Block *new_block, int opt)
 {
     if(current_block->type == B_ROOT) {
-        current_block->type = new_block->type;
-        current_block->level = new_block->type;
-        current_block->token_head = new_block->token_head;
-        current_block->stm_head = new_block->stm_head;
-        current_block->prev = new_block->prev;
-        current_block->next = new_block->next;
-        current_block->inner = new_block->inner;
-        current_block->outer = new_block->outer;
+        current_block->func_head->block_head = new_block;
     }else{
         switch(opt) {
             case 1:     // prev
@@ -691,13 +700,20 @@ void append_token(TOKENS *root_token, TOKENS *new_node)
  */
 void append_func(Funcs *func_head, Funcs *new_func)
 {
-    Funcs *iter = func_head;
-    while(iter->next != NULL){
-        iter = iter->next;
-    }
+    if(func_head->type == F_ROOT) {
+        func_head->type = new_func->type;
+        strcpy(func_head->name, new_func->name);
+        func_head->block_head = new_func->block_head;
+        strcpy(func_head->arg, new_func->arg);
+    }else{
+        Funcs *iter = func_head;
+        while(iter->next != NULL){
+            iter = iter->next;
+        }
 
-    iter->next = new_func;
-    new_func->prev = iter;
+        iter->next = new_func;
+        new_func->prev = iter;
+    }
 }
 
 /**
