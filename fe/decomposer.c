@@ -62,12 +62,24 @@ void decomposer(char code[][SIZE], int codenum)
     // カッコやカンマ対応
     tokenize_others(root);
 
-    // 切り出したトークンのタイプを設定する．ついでにエントリを登録
+    // 切り出したトークンのタイプを設定する．ついでにエントリを登録．ついでにコメントを除く
+    TOKENS *comment_buffer;
     int entry_no = 0;
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){
         set_token_type(iter, iter->value);
         iter->entry = entry_no;
         entry_no++;
+        if(strcmp(iter->value, "/") == 0 && strcmp(iter->prev->value, "*") == 0) {
+            if(comment_buffer == root) {
+                root->next = iter->next;
+                iter->next->prev = root;
+            }else{
+                comment_buffer->next = iter->next;
+                iter->next->prev = comment_buffer;
+            }
+        }
+        if(strcmp(iter->value, "/") == 0 && strcmp(iter->next->value, "*") == 0) comment_buffer = (iter == root) ? root : iter->prev;
+
     }
     // 2回目
     for(TOKENS *iter = root; iter != NULL; iter = iter->next){

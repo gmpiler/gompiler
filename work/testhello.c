@@ -2,9 +2,9 @@ void func(){
     int local;
     local = 2;
 }
-
 int main(void)
 {
+/* test comment2 */
     int a;
     int b;
     int i;
@@ -12,7 +12,7 @@ int main(void)
     int k;
 
     a = 0;
-    j = 0;
+    j = 0;  /* test comment3 */
     k = 0;
 
     for(i = 0; i < 10; i++) {
@@ -35,4 +35,3 @@ int main(void)
     
     return 0;
 }
-
