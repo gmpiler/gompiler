@@ -336,6 +336,34 @@ void analyze_tokens(TOKENS *root)
     // }
 }
 
+/* --- for parser --- */
+/**
+ * @brief leftを左の子に，rightを右の子にもつ，kindな親を返す
+ */
+AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right)
+{
+    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+    parent->kind = kind;
+    parent->left = left;
+    parent->right = right;
+
+    return parent;
+}
+
+/**
+ * @brief value(数)のASTノードを作成する
+ */
+AST_Node *create_node_num(char *value)
+{
+    int value_num = atoi(value);
+    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+    parent->kind = AST_NUM;
+    parent->value = value_num;
+
+    return parent;
+}
+
+
 enum block_type convert_tokentype_to_blocktype(enum token_type type)
 {
     switch(type){
