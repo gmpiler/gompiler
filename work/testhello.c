@@ -37,7 +37,7 @@ int main(void) /* function <main> */
     /* WHILE Block */
     while(j < 10){
         /* BASIC Block(of "WHILE") */
-        b = a + j;
+        b = a + j * 2;
         j = j + 1;
     }
     /* IF Block */

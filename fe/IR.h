@@ -55,11 +55,40 @@ typedef struct block {
     struct statement *stm_head;
     struct tokens *token_head;
     struct tokens *expr_head;
+    struct AST_Node_List *ast_head;
     struct block *prev;
     struct block *next;
     struct block *inner;
     struct block *outer;
     struct func  *func_head;
 } Block;
+
+/* --- for parser --- */
+typedef enum {
+    AST_ADD,
+    AST_SUB,
+    AST_MUL,
+    AST_DIV,
+    AST_NUM,
+    AST_VAR,
+    AST_ASSIGN
+} AST_Node_Kind;
+
+typedef struct AST_Node AST_Node;
+
+struct AST_Node {
+    AST_Node_Kind kind;
+    AST_Node *left;
+    AST_Node *right;
+    int value;
+    char var[MAX_TOKENNAME_SIZE];
+};
+
+struct AST_Node_List {
+    struct AST_Node data;
+    struct AST_Node_List *prev;
+    struct AST_Node_List *next;
+};
+
 
 #endif

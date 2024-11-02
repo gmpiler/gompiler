@@ -43,21 +43,3 @@ typedef struct tokens {
     int mark_as_decoded;
 } TOKENS;
 
-/* --- for parser --- */
-typedef enum {
-    AST_ADD,
-    AST_SUB,
-    AST_MUL,
-    AST_DIV,
-    AST_NUM,
-} AST_Node_Kind;
-
-typedef struct AST_Node AST_Node;
-
-struct AST_Node {
-    AST_Node_Kind kind;
-    AST_Node *left;
-    AST_Node *right;
-    int value;
-};
-

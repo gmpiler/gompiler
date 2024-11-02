@@ -38,6 +38,8 @@ TOKENS *obtain_arg_expr(TOKENS *block_maker);
 void delete_redundant_tokens(Funcs *func_head);
 void print_all_blocks(Funcs *func_head);
 void convert_blocktype_to_string(enum block_type type);
+void print_space(int level);
+void construct_ast(Funcs *func_head);
 
 /**
  *  @brief ENTRY POINT
@@ -308,69 +310,116 @@ void analyze_tokens(TOKENS *root)
 
 /* --- 各ブロックのトークンの構造解析 --- */
 #ifdef DEBUG
-    printf("--- Block ---\n");
+    printf("\n--- Block Info ---\n");
     print_all_blocks(func_head);
 #endif
-    // set_all_tokens_to_block(root_block, func_token_iter);
-    // int func_stm = func_token_iter->type;
-    // /* 1文ずつstatementを構築し，解析フラグを付与する責任を負う */
-    // switch(func_stm) {
-    //     case TYPE:  // 宣言のみ
-    //         break;
-    //     case VAR:   // assign
-    //         break;
-    //     case ARRAY: // assign
-    //         break;
-    //     case IF:    // if
-    //         break;
-    //     case FOR:   // for
-    //         break;
-    //     case WHILE: // while
-    //         break;
-    //     case RET:   // return
-    //         break;
-    //     case FUNC:  // 関数の利用
-    //         break;
-    //     default:
-    //         // printf("[!] function %s contains illegal statement\n", new_func->name);
-    //         // assert(1);
-    //         break;
-    // }
+
+    printf("\n--- AST constructor ---\n");
+    construct_ast(func_head);
 }
 
 /* --- for parser --- */
+void construct_ast(Funcs *func_head)
+{
+    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+        construct_ast_blocks(func_iter->block_head);
+    }
+}
+
+void construct_ast_blocks(Block *block)
+{
+    for(Block *b = block; b != NULL; b = b->next){
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+            construct_ast_block(b);
+            construct_ast_blocks(b->inner);
+        }else{
+            construct_ast_block(b);
+        }
+    }
+}
+
+/**
+ * @brief ブロック1つが渡される．その中に格納されている文のトークン列からASTを構築する
+ */
+void construct_ast_block(Block *block)
+{
+    for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
+        if(titer->type == TYPE){        // TODO: declaration, expecting <TYPE> <VAR> <;>
+            titer = titer->next->next;
+        }else if(titer->type == VAR){   // assign, expecting <VAR> <ASSIGN> <expr>
+            /**
+             * TODO: ast_headにはAST_Node_Listの先頭を渡す
+             */
+            block->ast_head = create_node_assign(create_node_var(titer->value), create_node_expr(titer->next->next));
+        }
+    }
+}
+
+/**
+ * @brief token_head以降のexprを読んでASTを構築し，親ノードを返す
+ * @attention <;>で終了する責任を負う
+ */
+AST_Node *create_node_expr(TOKENS *token_head)
+{
+
+}
+
 /**
  * @brief leftを左の子に，rightを右の子にもつ，kindな親を返す
  */
-// AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right)
-// {
-//     AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
-//     parent->kind = kind;
-//     parent->left = left;
-//     parent->right = right;
+AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right)
+{
+    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+    parent->kind = kind;
+    parent->left = left;
+    parent->right = right;
 
-//     return parent;
-// }
+    return parent;
+}
 
-// /**
-//  * @brief value(数)のASTノードを作成する
-//  */
-// AST_Node *create_node_num(char *value)
-// {
-//     int value_num = atoi(value);
-//     AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
-//     parent->kind = AST_NUM;
-//     parent->value = value_num;
+/**
+ * @brief value(数)のASTノードを作成する
+ */
+AST_Node *create_node_num(char *value)
+{
+    int value_num = atoi(value);
+    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+    parent->kind = AST_NUM;
+    parent->value = value_num;
 
-//     return parent;
-// }
+    return parent;
+}
+
+/**
+ * @brief value(変数)のASTノードを作成する
+ */
+AST_Node *create_node_var(TOKENS *var_token)
+{
+    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+    parent->kind = AST_VAR;
+    strcpy(parent->var, var_token->value);
+
+    return parent;
+}
+
+/**
+ * @brief assignのASTノードを作成する
+ */
+AST_Node *create_node_assign(AST_Node *left, AST_Node *right)
+{
+    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+    parent->kind = AST_ASSIGN;
+    parent->left = left;
+    parent->right = right;
+
+    return parent;
+}
 
 void print_all_blocks(Funcs *func_head)
 {
     for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
-        for(Block *b = func_iter->block_head; b != NULL; b = b->next){
-            print_blocks(b);
-        }
+        printf(">> In function %s\n", func_iter->name);
+        print_blocks(func_iter->block_head);
     }
 }
 
@@ -388,40 +437,48 @@ void print_blocks(Block *block)
 
 void print_block(Block *block)
 {
-    printf("> In Block ");
+    print_space(block->level);
+    printf("Block ");
     convert_blocktype_to_string(block->type);
     printf("\n");
-    switch(block->level){
+    print_space(block->level);
+    for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
+        printf("%s ", titer->value);
+        if(titer->type == SEMICOLON) {
+            printf("\n");
+            print_space(block->level);
+        }
+    }
+    printf("\n");
+}
+
+void print_space(int level)
+{
+    switch(level){
         case 0:
             break;
         case 1:
-            printf("\t");
+            printf("  ");
             break;
         case 2:
-            printf("\t\t");
+            printf("    ");
             break;
         case 3:
-            printf("\t\t\t");
+            printf("      ");
             break;
         case 4:
-            printf("\t\t\t\t");
+            printf("        ");
             break;
         default:
             break;
     }
-    for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
-        printf("%s ", titer->value);
-    }
-    printf("\n");
 }
 
 /* 全てのブロックを走査し，冗長なトークン(for, while, if以降と})を削除 */
 void delete_redundant_tokens(Funcs *func_head)
 {
     for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
-        for(Block *b = func_iter->block_head; b != NULL; b = b->next){
-            drt_blocks(b);
-        }
+        drt_blocks(func_iter->block_head);
     }
 }
 
