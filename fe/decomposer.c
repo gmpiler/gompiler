@@ -41,6 +41,12 @@ void convert_blocktype_to_string(enum block_type type);
 void print_space(int level);
 void construct_ast(Funcs *func_head);
 
+AST_Node *create_node_expr(TOKENS *token_head);
+AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right);
+AST_Node *create_node_num(char *value);
+AST_Node *create_node_var(TOKENS *var_token);
+AST_Node *create_node_assign(AST_Node *left, AST_Node *right);
+
 /**
  *  @brief ENTRY POINT
  *  tokenize original codes here
@@ -350,7 +356,7 @@ void construct_ast_block(Block *block)
             /**
              * TODO: ast_headにはAST_Node_Listの先頭を渡す
              */
-            block->ast_head = create_node_assign(create_node_var(titer->value), create_node_expr(titer->next->next));
+            block->ast_head = create_node_assign(create_node_var(titer), create_node_expr(titer->next->next));
         }
     }
 }
