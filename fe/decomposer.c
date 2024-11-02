@@ -379,9 +379,32 @@ void analyze_tokens(TOKENS *root)
 /* 全てのブロックを走査し，冗長なトークン(for, while, if以降と})を削除 */
 void delete_redundant_tokens(Funcs *func_head)
 {
-    for(TOKENS *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
         for(Block *b = func_head->block_head; b != NULL; b = b->next){
-            
+            drt_blocks(b);
+        }
+    }
+}
+
+void drt_blocks(Block *block)
+{
+    for(Block *b = block; b != NULL; b = b->next){
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+            // ここにFOR, WHILE, IFブロックが通る
+            drt_block(b);
+            drt_blocks(b->inner);
+        }
+        // ここはFOR, WHILE, IF以外(== BB)が通る
+        drt_block(b);
+    }
+}
+
+void drt_block(Block *block)
+{
+    for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
+        if(block->token_head != NULL) {
+            enum token_type ttype = titer->next->type;
+            if(ttype == FOR || ttype == WHILE || ttype == IF) titer->next = NULL;
         }
     }
 }
