@@ -380,7 +380,7 @@ void analyze_tokens(TOKENS *root)
 void delete_redundant_tokens(Funcs *func_head)
 {
     for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
-        for(Block *b = func_head->block_head; b != NULL; b = b->next){
+        for(Block *b = func_iter->block_head; b != NULL; b = b->next){
             drt_blocks(b);
         }
     }
@@ -394,7 +394,7 @@ void drt_blocks(Block *block)
             drt_block(b);
             drt_blocks(b->inner);
         }
-        // ここはFOR, WHILE, IF以外(== BB)が通る
+        // ここはFOR, WHILE, IF以外(== BB)が通る．elseでもよかったのかも
         drt_block(b);
     }
 }
@@ -403,8 +403,15 @@ void drt_block(Block *block)
 {
     for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
         if(block->token_head != NULL) {
-            enum token_type ttype = titer->next->type;
-            if(ttype == FOR || ttype == WHILE || ttype == IF) titer->next = NULL;
+            enum token_type ttype = titer->type;
+            if(ttype == FOR || ttype == WHILE || ttype == IF || ttype == RBRACE) {
+                if(titer->prev == NULL) {
+                    titer->next = NULL;
+                    if(titer == block->token_head) block->token_head = NULL;
+                }else{
+                    titer->prev->next = NULL;
+                }
+            }
         }
     }
 }

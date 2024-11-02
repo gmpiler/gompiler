@@ -16,22 +16,22 @@ int main(void) /* function <main> */
     j = 0;
     k = 0;
 
-    /* FOR Block */
+    /* FOR Block */1
     for(i = 0; i < 10; i++) {
-        /* BASIC Block(of "FOR") */
-        /* FOR Block */
+        /* BASIC Block(of "FOR") */1
+        /* FOR Block */1
         for(k=0; k<10; k++){
-            /* BASIC Block(of "FOR") */
+            /* BASIC Block(of "FOR") */1
             a = a + i;
-            /* IF Block */
+            /* IF Block */1
             if(a > 0) {
-                /* BASIC Block(of "if") */
+                /* BASIC Block(of "if") */1
                 a =2;
             }
-            /* BASIC Block */
+            /* BASIC Block */1
             a = 3;
         }
-        /* BASIC Block */
+        /* BASIC Block */1
         a = 2;
     }
     /* WHILE Block */
