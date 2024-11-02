@@ -33,6 +33,8 @@ TOKENS *search_block_maker(TOKENS *token, int vector);
 enum block_type convert_tokentype_to_blocktype(enum token_type type);
 TOKENS *copy_token(TOKENS *original_token);
 void init_token_value(char *value);
+TOKENS *copy_token_list(TOKENS *original_token_list);
+TOKENS *obtain_arg_expr(TOKENS *block_maker);
 
 /**
  *  @brief ENTRY POINT
@@ -154,8 +156,6 @@ void analyze_tokens(TOKENS *root)
                 Funcs *new_func = (Funcs*)malloc(sizeof(Funcs));
                 create_func(new_func, token_iter->value, token_iter->next->value);
                 Block *current_block = new_func->block_head;
-                TOKENS *expr_buffer = (TOKENS*)malloc(sizeof(TOKENS));
-                expr_buffer->mark_as_decoded = 0;
 
                 printf(">> In function <%s> ...\n", new_func->name);
 
@@ -167,31 +167,6 @@ void analyze_tokens(TOKENS *root)
 #ifdef DEBUG
                     printf("[%d]: %s\n", func_token_iter->level, func_token_iter->value);
 #endif
-                    /* for, while, ifのexprを保存 */
-                    if((func_token_iter->type == FOR || func_token_iter->type == WHILE || func_token_iter->type == IF)) {  
-                        init_token_value(expr_buffer->value);
-                        expr_buffer->next = NULL;
-                        expr_buffer->prev = NULL;
-                        for(TOKENS* expr_iter = func_token_iter; expr_iter->type != LBRACE; expr_iter = expr_iter->next){
-                            expr_iter->mark_as_decoded = 1;
-                            enum token_type ttype = expr_iter->type;
-                            if(ttype == FOR || ttype == WHILE || ttype == IF || ttype == LPAREN || ttype == RPAREN) continue;
-                            if(expr_buffer->mark_as_decoded == 0) {
-                                strcpy(expr_buffer->value, expr_iter->value);
-                                expr_buffer->type = expr_iter->type;
-                                expr_buffer->entry = expr_iter->entry;
-                                expr_buffer->level = expr_iter->level;
-                                expr_buffer->mark_as_decoded = expr_iter->mark_as_decoded;
-                            }else{
-                                TOKENS *copy_of_token = copy_token(expr_iter);
-                                append_token(expr_buffer, copy_of_token);
-                            }
-                        }
-                        last_level = func_token_iter->level;
-                        expr_buffer->mark_as_decoded = 0;
-                        continue;
-                    }
-
 
                     /* 以下，関数の<}>を検知したらbreakする処理 */
                     /**
@@ -259,7 +234,8 @@ void analyze_tokens(TOKENS *root)
                                     Block *next_block = (Block*)malloc(sizeof(Block));
                                     next_block->type = convert_tokentype_to_blocktype(block_maker->type);
                                     next_block->level = nest_level;
-                                    next_block->expr_head = expr_buffer;
+                                    // next_block->expr_head = copy_token_list(expr_buffer);
+                                    next_block->expr_head = obtain_arg_expr(block_maker);
                                     append_block(current_block, next_block, 2);
                                     Block *new_inner_block = (Block*)malloc(sizeof(Block));
                                     new_inner_block->level = nest_level;
@@ -306,12 +282,14 @@ void analyze_tokens(TOKENS *root)
                         TOKENS *new_token_copy = (TOKENS*)malloc(sizeof(TOKENS));
                         strcpy(new_token_copy->value, func_token_iter->value);
                         new_token_copy->type = func_token_iter->type;
+                        /**
+                         * TODO:  for, while, if以降のトークンはappendしない．あと<}>もappendしない処理が欲しい
+                         */
                         if(current_block->token_head == NULL) { // 本当は，FOR, IF, WHILEの時はinnerにappendする，といった操作が適切かも
                             append_token(current_block->inner->token_head, new_token_copy);
                         }else{
                             append_token(current_block->token_head, new_token_copy);
                         }
-
                         last_level = func_token_iter->level;
                     }
                     last_level = func_token_iter->level;
@@ -402,6 +380,53 @@ void init_token_value(char *value)
         value[i] = '\0';
         i++;
     }
+}
+
+/**
+ * @brief block_maker(for, while, if)の引数式にあたるトークンのリスト(コピー)を作成し返す
+ * @param block_maker(<for> || <while> || <if>) -> <(> -> <expr> -> <)>を期待
+ */
+TOKENS *obtain_arg_expr(TOKENS *block_maker)
+{
+    
+    TOKENS *expr_buffer = (TOKENS*)malloc(sizeof(TOKENS));
+    init_token_value(expr_buffer->value);
+    expr_buffer->next = NULL;
+    expr_buffer->prev = NULL;
+    int key = 0;
+
+    for(TOKENS* expr_iter = block_maker->next->next; expr_iter->type != RPAREN; expr_iter = expr_iter->next){
+        enum token_type ttype = expr_iter->type;
+        if(key == 0) {
+            strcpy(expr_buffer->value, expr_iter->value);
+            expr_buffer->type = expr_iter->type;
+            expr_buffer->entry = expr_iter->entry;
+            expr_buffer->level = expr_iter->level;
+            key = 1;
+        }else{
+            TOKENS *copy_of_token = copy_token(expr_iter);
+            append_token(expr_buffer, copy_of_token);
+        }
+    }
+
+    return expr_buffer;
+}
+
+TOKENS *copy_token_list(TOKENS *original_token_list)
+{
+    TOKENS *head = (TOKENS*)malloc(sizeof(TOKENS));
+    head->entry = original_token_list->entry;
+    head->level = original_token_list->level;
+    head->type = original_token_list->type;
+    strcpy(head->value, original_token_list->value);
+    head->prev = NULL;
+    head->next = NULL;
+    head->mark_as_decoded = original_token_list->mark_as_decoded;
+    for(TOKENS *iter = original_token_list->next; iter != NULL; iter = iter->next){
+        TOKENS *copied_token = copy_token(iter);
+        append_token(head, copied_token);
+    }
+    return head;
 }
 
 TOKENS *copy_token(TOKENS *original_token)
