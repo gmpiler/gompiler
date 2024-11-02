@@ -36,6 +36,8 @@ void init_token_value(char *value);
 TOKENS *copy_token_list(TOKENS *original_token_list);
 TOKENS *obtain_arg_expr(TOKENS *block_maker);
 void delete_redundant_tokens(Funcs *func_head);
+void print_all_blocks(Funcs *func_head);
+void convert_blocktype_to_string(enum block_type type);
 
 /**
  *  @brief ENTRY POINT
@@ -307,20 +309,7 @@ void analyze_tokens(TOKENS *root)
 /* --- 各ブロックのトークンの構造解析 --- */
 #ifdef DEBUG
     printf("--- Block ---\n");
-    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
-        printf(">> Function %s\n", func_iter->name);
-        for(Block *block_iter0 = func_iter->block_head; block_iter0 != NULL; block_iter0 = block_iter0->next){
-            for(Block *block_iter = block_iter0->inner; block_iter != NULL; block_iter = block_iter->inner){
-                printf("\t%d\n", block_iter->level);
-                for(TOKENS *token_iter = block_iter->token_head; token_iter != NULL; token_iter = token_iter->next){
-                    printf("[%d]: %s\n", block_iter->level, token_iter->value);
-                }
-            }
-            for(TOKENS *token_iter = block_iter0->token_head; token_iter != NULL; token_iter = token_iter->next){
-                printf("[%d]: %s\n", block_iter0->level, token_iter->value);
-            }
-        }
-    }
+    print_all_blocks(func_head);
 #endif
     // set_all_tokens_to_block(root_block, func_token_iter);
     // int func_stm = func_token_iter->type;
@@ -376,6 +365,56 @@ void analyze_tokens(TOKENS *root)
 //     return parent;
 // }
 
+void print_all_blocks(Funcs *func_head)
+{
+    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+        for(Block *b = func_iter->block_head; b != NULL; b = b->next){
+            print_blocks(b);
+        }
+    }
+}
+
+void print_blocks(Block *block)
+{
+    for(Block *b = block; b != NULL; b = b->next){
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+            print_block(b);
+            print_blocks(b->inner);
+        }else{
+            print_block(b);
+        }
+    }
+}
+
+void print_block(Block *block)
+{
+    printf("> In Block ");
+    convert_blocktype_to_string(block->type);
+    printf("\n");
+    switch(block->level){
+        case 0:
+            break;
+        case 1:
+            printf("\t");
+            break;
+        case 2:
+            printf("\t\t");
+            break;
+        case 3:
+            printf("\t\t\t");
+            break;
+        case 4:
+            printf("\t\t\t\t");
+            break;
+        default:
+            break;
+    }
+    for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
+        printf("%s ", titer->value);
+    }
+    printf("\n");
+}
+
 /* 全てのブロックを走査し，冗長なトークン(for, while, if以降と})を削除 */
 void delete_redundant_tokens(Funcs *func_head)
 {
@@ -389,13 +428,14 @@ void delete_redundant_tokens(Funcs *func_head)
 void drt_blocks(Block *block)
 {
     for(Block *b = block; b != NULL; b = b->next){
-        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) { /* FOR, WHILE, IFブロックのみinnerがあるはず */
             // ここにFOR, WHILE, IFブロックが通る
+            drt_block(b);           // FOR, WHILE, IFブロック自体と
+            drt_blocks(b->inner);   // そのinnerを調査にかける
+        }else{
+            // ここはFOR, WHILE, IF以外(== BB)が通る．elseでもよかったのかも
             drt_block(b);
-            drt_blocks(b->inner);
         }
-        // ここはFOR, WHILE, IF以外(== BB)が通る．elseでもよかったのかも
-        drt_block(b);
     }
 }
 
@@ -585,6 +625,38 @@ void append_block(Block *current_block, Block *new_block, int opt)
                 break;
         };
     }
+}
+
+void convert_blocktype_to_string(enum block_type type)
+{
+    char decoded_string[MAX_TOKENNAME_SIZE];
+    strcpy(decoded_string, "undec_type");
+
+    switch(type) {
+        case B_ROOT:
+            strcpy(decoded_string, "ROOT");
+            break;
+        case B_BASIC:
+            strcpy(decoded_string, "BASIC");
+            break;
+        case B_IF:
+            strcpy(decoded_string, "IF");
+            break;
+        case B_FOR:
+            strcpy(decoded_string, "FOR");
+            break;
+        case B_WHILE:
+            strcpy(decoded_string, "WHILE");
+            break;
+        case B_OTHERS:
+            strcpy(decoded_string, "OTHERS");
+            break;
+        default:
+            printf("[!] cannot decode block type\n");
+            break;
+    }
+
+    printf("%s", decoded_string);
 }
 
 /**
