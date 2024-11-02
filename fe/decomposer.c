@@ -35,6 +35,7 @@ TOKENS *copy_token(TOKENS *original_token);
 void init_token_value(char *value);
 TOKENS *copy_token_list(TOKENS *original_token_list);
 TOKENS *obtain_arg_expr(TOKENS *block_maker);
+void delete_redundant_tokens(Funcs *func_head);
 
 /**
  *  @brief ENTRY POINT
@@ -301,6 +302,8 @@ void analyze_tokens(TOKENS *root)
         }
     }
 
+    delete_redundant_tokens(func_head);
+
 /* --- 各ブロックのトークンの構造解析 --- */
 #ifdef DEBUG
     printf("--- Block ---\n");
@@ -372,6 +375,16 @@ void analyze_tokens(TOKENS *root)
 
 //     return parent;
 // }
+
+/* 全てのブロックを走査し，冗長なトークン(for, while, if以降と})を削除 */
+void delete_redundant_tokens(Funcs *func_head)
+{
+    for(TOKENS *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+        for(Block *b = func_head->block_head; b != NULL; b = b->next){
+            
+        }
+    }
+}
 
 void init_token_value(char *value)
 {
