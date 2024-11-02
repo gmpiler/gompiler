@@ -31,6 +31,8 @@ void append_block(Block *current_block, Block *new_block, int opt);
 void create_func(Funcs *new_func, char *type, char *name);
 TOKENS *search_block_maker(TOKENS *token, int vector);
 enum block_type convert_tokentype_to_blocktype(enum token_type type);
+TOKENS *copy_token(TOKENS *original_token);
+void init_token_value(char *value);
 
 /**
  *  @brief ENTRY POINT
@@ -152,6 +154,8 @@ void analyze_tokens(TOKENS *root)
                 Funcs *new_func = (Funcs*)malloc(sizeof(Funcs));
                 create_func(new_func, token_iter->value, token_iter->next->value);
                 Block *current_block = new_func->block_head;
+                TOKENS *expr_buffer = (TOKENS*)malloc(sizeof(TOKENS));
+                expr_buffer->mark_as_decoded = 0;
 
                 printf(">> In function <%s> ...\n", new_func->name);
 
@@ -163,6 +167,32 @@ void analyze_tokens(TOKENS *root)
 #ifdef DEBUG
                     printf("[%d]: %s\n", func_token_iter->level, func_token_iter->value);
 #endif
+                    /* for, while, ifのexprを保存 */
+                    if((func_token_iter->type == FOR || func_token_iter->type == WHILE || func_token_iter->type == IF)) {  
+                        init_token_value(expr_buffer->value);
+                        expr_buffer->next = NULL;
+                        expr_buffer->prev = NULL;
+                        for(TOKENS* expr_iter = func_token_iter; expr_iter->type != LBRACE; expr_iter = expr_iter->next){
+                            expr_iter->mark_as_decoded = 1;
+                            enum token_type ttype = expr_iter->type;
+                            if(ttype == FOR || ttype == WHILE || ttype == IF || ttype == LPAREN || ttype == RPAREN) continue;
+                            if(expr_buffer->mark_as_decoded == 0) {
+                                strcpy(expr_buffer->value, expr_iter->value);
+                                expr_buffer->type = expr_iter->type;
+                                expr_buffer->entry = expr_iter->entry;
+                                expr_buffer->level = expr_iter->level;
+                                expr_buffer->mark_as_decoded = expr_iter->mark_as_decoded;
+                            }else{
+                                TOKENS *copy_of_token = copy_token(expr_iter);
+                                append_token(expr_buffer, copy_of_token);
+                            }
+                        }
+                        last_level = func_token_iter->level;
+                        expr_buffer->mark_as_decoded = 0;
+                        continue;
+                    }
+
+
                     /* 以下，関数の<}>を検知したらbreakする処理 */
                     /**
                      * type func (args) {       <- level 0 (nest_level == 0)
@@ -173,6 +203,7 @@ void analyze_tokens(TOKENS *root)
                      */
                     if(func_token_iter->type == LBRACE) {
                         nest_level++;
+                        last_level = func_token_iter->level;
                         continue;
                     }
                     if(func_token_iter->type == RBRACE) {
@@ -228,6 +259,7 @@ void analyze_tokens(TOKENS *root)
                                     Block *next_block = (Block*)malloc(sizeof(Block));
                                     next_block->type = convert_tokentype_to_blocktype(block_maker->type);
                                     next_block->level = nest_level;
+                                    next_block->expr_head = expr_buffer;
                                     append_block(current_block, next_block, 2);
                                     Block *new_inner_block = (Block*)malloc(sizeof(Block));
                                     new_inner_block->level = nest_level;
@@ -340,29 +372,51 @@ void analyze_tokens(TOKENS *root)
 /**
  * @brief leftを左の子に，rightを右の子にもつ，kindな親を返す
  */
-AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right)
-{
-    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
-    parent->kind = kind;
-    parent->left = left;
-    parent->right = right;
+// AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right)
+// {
+//     AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+//     parent->kind = kind;
+//     parent->left = left;
+//     parent->right = right;
 
-    return parent;
+//     return parent;
+// }
+
+// /**
+//  * @brief value(数)のASTノードを作成する
+//  */
+// AST_Node *create_node_num(char *value)
+// {
+//     int value_num = atoi(value);
+//     AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
+//     parent->kind = AST_NUM;
+//     parent->value = value_num;
+
+//     return parent;
+// }
+
+void init_token_value(char *value)
+{
+    int i = 0;
+    while(i < MAX_TOKENNAME_SIZE) {
+        value[i] = '\0';
+        i++;
+    }
 }
 
-/**
- * @brief value(数)のASTノードを作成する
- */
-AST_Node *create_node_num(char *value)
+TOKENS *copy_token(TOKENS *original_token)
 {
-    int value_num = atoi(value);
-    AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
-    parent->kind = AST_NUM;
-    parent->value = value_num;
+    TOKENS* copied_token = (TOKENS*)malloc(sizeof(TOKENS));
+    copied_token->entry = original_token->entry;
+    copied_token->level = original_token->level;
+    copied_token->type = original_token->type;
+    strcpy(copied_token->value, original_token->value);
+    copied_token->prev = NULL;
+    copied_token->next = NULL;
+    copied_token->mark_as_decoded = original_token->mark_as_decoded;
 
-    return parent;
+    return copied_token;
 }
-
 
 enum block_type convert_tokentype_to_blocktype(enum token_type type)
 {

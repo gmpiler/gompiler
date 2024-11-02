@@ -54,6 +54,7 @@ typedef struct block {
     int    level;                   // 階層情報
     struct statement *stm_head;
     struct tokens *token_head;
+    struct tokens *expr_head;
     struct block *prev;
     struct block *next;
     struct block *inner;
