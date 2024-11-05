@@ -55,7 +55,7 @@ typedef struct block {
     struct statement *stm_head;
     struct tokens *token_head;
     struct tokens *expr_head;
-    struct AST_Node *ast_head;  // Listがよい
+    struct AST_Node_List *ast_head;  // Listがよい
     struct block *prev;
     struct block *next;
     struct block *inner;
@@ -84,8 +84,10 @@ struct AST_Node {
     char var[MAX_TOKENNAME_SIZE];
 };
 
+typedef struct AST_Node_List AST_Node_List;
+
 struct AST_Node_List {
-    struct AST_Node data;
+    struct AST_Node *data;
     struct AST_Node_List *prev;
     struct AST_Node_List *next;
 };

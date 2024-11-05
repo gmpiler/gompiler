@@ -12,7 +12,7 @@
             "program": "/home/sota0147/work/work/fe",
             //引数．オプションなどを都度変更
             "args": [
-                "testadd.c",
+                "testhello.c",
                 "testhello.ir",
             ],
             "stopAtEntry": false,

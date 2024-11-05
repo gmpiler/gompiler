@@ -41,11 +41,16 @@ void convert_blocktype_to_string(enum block_type type);
 void print_space(int level);
 void construct_ast(Funcs *func_head);
 
+int consume_token(char c);
 AST_Node *create_node_expr(TOKENS *token_head);
+AST_Node *create_node_mul(TOKENS *token_head);
+AST_Node *create_node_primary(TOKENS *token_head);
 AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right);
-AST_Node *create_node_num(char *value);
+AST_Node *create_node_num(TOKENS *num_token);
 AST_Node *create_node_var(TOKENS *var_token);
 AST_Node *create_node_assign(AST_Node *left, AST_Node *right);
+
+TOKENS *cur_token;
 
 /**
  *  @brief ENTRY POINT
@@ -349,15 +354,35 @@ void construct_ast_blocks(Block *block)
  */
 void construct_ast_block(Block *block)
 {
-    for(TOKENS *titer = block->token_head; titer != NULL; titer = titer->next){
-        if(titer->type == TYPE){        // TODO: declaration, expecting <TYPE> <VAR> <;>
-            titer = titer->next->next;
-        }else if(titer->type == VAR){   // assign, expecting <VAR> <ASSIGN> <expr>
-            /**
-             * TODO: ast_headにはAST_Node_Listの先頭を渡す
-             */
-            block->ast_head = create_node_assign(create_node_var(titer), create_node_expr(titer->next->next));
+    cur_token = block->token_head;
+    AST_Node_List *ast_list = (AST_Node_List*)malloc(sizeof(AST_Node_List));
+    while(cur_token != NULL) {
+        if(cur_token->type == RET) break;
+        if(cur_token->type == TYPE) cur_token = cur_token->next->next->next; // TODO: declaration, expecting <TYPE> <VAR> <;>
+        if(cur_token->type == VAR) { // assign, expecting <VAR> <ASSIGN> <expr>
+        /**
+         * TODO: ast_headにはAST_Node_Listの先頭を渡す
+         */
+            AST_Node *var_node  = create_node_var(cur_token);
+            AST_Node *parent    = create_node_assign(var_node, create_node_expr(cur_token->next->next));
+            append_ast(ast_list, parent);
         }
+    }
+    block->ast_head = ast_list;
+}
+
+void append_ast(AST_Node_List *list, AST_Node *new_ast)
+{
+    if(list->data == NULL) {
+        list->data = new_ast;
+    }else{
+        AST_Node_List *iter = list;
+        while(iter->next != NULL) {
+            iter = iter->next;
+        }
+        AST_Node_List *new_ast_list = (AST_Node_List*)malloc(sizeof(AST_Node_List));
+        new_ast_list->data = new_ast;
+        iter->next = new_ast_list;
     }
 }
 
@@ -367,7 +392,69 @@ void construct_ast_block(Block *block)
  */
 AST_Node *create_node_expr(TOKENS *token_head)
 {
+    cur_token = token_head;
+    AST_Node *node = create_node_mul(cur_token);
 
+    for(;;) {
+        if(consume_token('+')) {
+            AST_Node *node_afteradd = create_node_mul(cur_token);
+            node = create_node(AST_ADD, node, node_afteradd);
+        } else if(consume_token('-')) {
+            AST_Node *node_aftersub = create_node_mul(cur_token);
+            node = create_node(AST_SUB, node, node_aftersub);
+        } else if(cur_token->next->value[0] == ';') {
+            cur_token = cur_token->next->next;
+            return node;
+        } else {
+            return node;
+        }
+    }
+}
+
+AST_Node *create_node_mul(TOKENS *token_head)
+{
+    cur_token = token_head;
+    AST_Node *node = create_node_primary(cur_token);
+
+    for(;;) {
+        if(consume_token('*')) {
+            AST_Node *node_aftermul = create_node_primary(cur_token);
+            node = create_node(AST_MUL, node, node_aftermul);
+        } else if(consume_token('/')) {
+            AST_Node *node_afterdiv = create_node_primary(cur_token);
+            node = create_node(AST_DIV, node, node_afterdiv);
+        } else {
+            return node;
+        }
+    }
+}
+
+AST_Node *create_node_primary(TOKENS *token_head)
+{
+    cur_token = token_head;
+    if(cur_token->value[0] == '(') {
+        cur_token = cur_token->next;
+        AST_Node *node = create_node_expr(cur_token);
+        cur_token = cur_token->next;
+        return node;
+    }
+
+    AST_Node *node_return;
+    if(cur_token->type == NUM) node_return = create_node_num(cur_token);
+    if(cur_token->type == VAR) node_return = create_node_var(cur_token);
+
+    return node_return;
+}
+
+int consume_token(char c)
+{
+    TOKENS *expect_token = cur_token->next;
+    if(expect_token->value[0] == c) {
+        cur_token = cur_token->next->next;  // cur_token c TOKEN
+        return 1;
+    }
+
+    return 0;
 }
 
 /**
@@ -386,9 +473,9 @@ AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right)
 /**
  * @brief value(数)のASTノードを作成する
  */
-AST_Node *create_node_num(char *value)
+AST_Node *create_node_num(TOKENS *num_token)
 {
-    int value_num = atoi(value);
+    int value_num = atoi(num_token->value);
     AST_Node *parent = (AST_Node*)malloc(sizeof(AST_Node));
     parent->kind = AST_NUM;
     parent->value = value_num;
