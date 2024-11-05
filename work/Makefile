@@ -5,7 +5,8 @@ MAKEFILE_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 CC = gcc
 
 # Target
-FILENAME = testhello
+# FILENAME = testcalculator
+FILENAME = testadd
 
 all:
 # Make toolchain

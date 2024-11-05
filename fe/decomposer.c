@@ -41,7 +41,7 @@ void print_space(int level);
 void construct_ast(Funcs *func_head);
 
 int consume_token(char c);
-void ast_dfs_postorder(AST_Node *parent);
+void ast_dfs_postorder(AST_Node *parent, Quadruple_List *qr_list_head);
 int is_non_term(AST_Node *node);
 AST_Node *create_node_expr(TOKENS *token_head);
 AST_Node *create_node_mul(TOKENS *token_head);
@@ -50,6 +50,8 @@ AST_Node *create_node(AST_Node_Kind kind, AST_Node *left, AST_Node *right);
 AST_Node *create_node_num(TOKENS *num_token);
 AST_Node *create_node_var(TOKENS *var_token);
 AST_Node *create_node_assign(AST_Node *left, AST_Node *right);
+
+void append_qr(Quadruple_List *list, Quadruple *new_qr);
 
 TOKENS *cur_token;
 int temp_destination_entry;
@@ -535,48 +537,147 @@ void print_ast_block(Block *block)
     printf("Block ");
     convert_blocktype_to_string(block->type);
     printf("\n");
+    Quadruple_List *new_qr_list = (Quadruple_List*)malloc(sizeof(Quadruple_List));
     for(AST_Node_List *liter = block->ast_head; liter != NULL; liter = liter->next){
-        ast_dfs_postorder(liter->data);
+        ast_dfs_postorder(liter->data, new_qr_list); // assign文を1つずつ処理
     }
+    block->qr_head = new_qr_list;
     printf("\n");
 }
 
 /* preorderな深さ優先探索でASTを4つ組順に巡回 */
-void ast_dfs_postorder(AST_Node *parent) {
+void ast_dfs_postorder(AST_Node *parent, Quadruple_List *qr_list_head) {
     if(parent != NULL) {
-        ast_dfs_postorder(parent->left);
-        ast_dfs_postorder(parent->right);
+        ast_dfs_postorder(parent->left, qr_list_head);
+        ast_dfs_postorder(parent->right, qr_list_head);
         if(is_non_term(parent)) {
             printf("(");
+        /* --- ここで一つの四つ組を形成 --- */
+            Quadruple *new_qr = (Quadruple*)malloc(sizeof(Quadruple));
             temp_destination_entry++;
             parent->temp_entry = temp_destination_entry;
-            if(parent->kind == AST_ADD) printf("+, ");
-            if(parent->kind == AST_SUB) printf("-, ");
-            if(parent->kind == AST_MUL) printf("*, ");
-            if(parent->kind == AST_DIV) printf("/, ");
+            if(parent->kind == AST_ADD || parent->kind == AST_SUB || parent->kind == AST_MUL || parent->kind == AST_DIV) {
+                if(parent->kind == AST_ADD) {
+                    new_qr->type = OPE_ADD;
+                    printf("+, ");
+                } else if(parent->kind == AST_SUB) {
+                    new_qr->type = OPE_SUB;
+                    printf("-, ");
+                } else if(parent->kind == AST_MUL) {
+                    new_qr->type = OPE_MUL;
+                    printf("*, ");
+                } else if(parent->kind == AST_DIV) {
+                    new_qr->type = OPE_DIV;
+                    printf("/, ");
+                }
+            }
+            Operand *new_dst_op = (Operand*)malloc(sizeof(Operand));
             if(parent->kind == AST_ASSIGN) {
-                printf("=, ");
+                new_qr->type = OPE_ASSIGN;
                 temp_destination_entry = 0;
+                printf("=, ");
+            }else{
+                new_dst_op->type = OP_TEMP; // OPE_ASSIGN以外の非終端記号は一時変数となる
+                new_dst_op->temp_entry = temp_destination_entry;
+                printf("t%d, ", new_dst_op->temp_entry);
             }
-            if(parent->kind != AST_ASSIGN) printf("t%d, ", temp_destination_entry);
-            if(parent->left->kind == AST_NUM) {
-                printf("%d, ", parent->left->value);
-            } else if(parent->left->kind == AST_VAR) {
-                printf("%s, ", parent->left->var);
-            } else {
-                printf("t%d, ", parent->left->temp_entry);
+    
+            Operand *new_src_op1 = (Operand*)malloc(sizeof(Operand));
+            Operand *new_src_op2 = (Operand*)malloc(sizeof(Operand));
+            if(parent->kind != AST_ASSIGN) {
+                if(parent->left->kind == AST_NUM) {
+                    new_src_op1->type = OP_NUM;
+                    new_src_op1->num = parent->left->value;
+                    printf("%d, ", new_src_op1->num);
+                } else if(parent->left->kind == AST_VAR) {
+                    new_src_op1->type = OP_VAR;
+                    strcpy(new_src_op1->value, parent->left->var);
+                    printf("%s, ", new_src_op1->value);
+                } else {
+                    new_src_op1->type = OP_TEMP;
+                    new_src_op1->temp_entry = parent->left->temp_entry;
+                    printf("t%d, ", new_src_op1->temp_entry);
+                }
+                if(parent->right->kind == AST_NUM) {
+                    new_src_op2->type = OP_NUM;
+                    new_src_op2->num = parent->right->value;
+                    printf("%d", new_src_op2->num);
+                } else if(parent->right->kind == AST_VAR) {
+                    new_src_op2->type = OP_VAR;
+                    strcpy(new_src_op2->value, parent->right->var);
+                    printf("%s", new_src_op2->value);
+                } else {
+                    new_src_op2->type = OP_TEMP;
+                    new_src_op2->temp_entry = parent->right->temp_entry;
+                    printf("t%d", new_src_op2->temp_entry);
+                }
+            }else{
+                new_dst_op->type = OP_VAR;
+                strcpy(new_dst_op->value, parent->left->var);
+                printf("%s, ", new_dst_op->value);
+                new_src_op1->type = OP_TEMP;
+                new_src_op1->temp_entry = parent->right->temp_entry;
+                printf("t%d", new_src_op1->temp_entry);
+                new_src_op2 = NULL;
             }
-            if(parent->right->kind == AST_NUM) {
-                printf("%d", parent->right->value);
-            } else if(parent->right->kind == AST_VAR) {
-                printf("%s", parent->right->var);
-            } else {
-                printf("t%d", parent->right->temp_entry);
-            }
+            new_qr->dst_op = new_dst_op;
+            new_qr->src_op1 = new_src_op1;
+            new_qr->src_op2 = new_src_op2;
+            append_qr(qr_list_head, new_qr);
             printf(")\n");
         }
     }
 }
+
+void append_qr(Quadruple_List *list, Quadruple *new_qr)
+{
+    if(list->data == NULL) {
+        list->data = new_qr;
+    }else{
+        Quadruple_List *iter = list;
+        while(iter->next != NULL) {
+            iter = iter->next;
+        }
+        Quadruple_List *new_qr_list = (Quadruple_List*)malloc(sizeof(Quadruple_List));
+        new_qr_list->data = new_qr;
+        iter->next = new_qr_list;
+    }
+}
+// void ast_dfs_postorder(AST_Node *parent) {
+//     if(parent != NULL) {
+//         ast_dfs_postorder(parent->left);
+//         ast_dfs_postorder(parent->right);
+//         if(is_non_term(parent)) {
+//             printf("(");
+//             temp_destination_entry++;
+//             parent->temp_entry = temp_destination_entry;
+//             if(parent->kind == AST_ADD) printf("+, ");
+//             if(parent->kind == AST_SUB) printf("-, ");
+//             if(parent->kind == AST_MUL) printf("*, ");
+//             if(parent->kind == AST_DIV) printf("/, ");
+//             if(parent->kind == AST_ASSIGN) {
+//                 printf("=, ");
+//                 temp_destination_entry = 0;
+//             }
+//             if(parent->kind != AST_ASSIGN) printf("t%d, ", temp_destination_entry);
+//             if(parent->left->kind == AST_NUM) {
+//                 printf("%d, ", parent->left->value);
+//             } else if(parent->left->kind == AST_VAR) {
+//                 printf("%s, ", parent->left->var);
+//             } else {
+//                 printf("t%d, ", parent->left->temp_entry);
+//             }
+//             if(parent->right->kind == AST_NUM) {
+//                 printf("%d", parent->right->value);
+//             } else if(parent->right->kind == AST_VAR) {
+//                 printf("%s", parent->right->var);
+//             } else {
+//                 printf("t%d", parent->right->temp_entry);
+//             }
+//             printf(")\n");
+//         }
+//     }
+// }
 
 int is_non_term(AST_Node *node)
 {
