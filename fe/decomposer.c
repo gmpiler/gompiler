@@ -41,7 +41,8 @@ void print_space(int level);
 void construct_ast(Funcs *func_head);
 
 int consume_token(char c);
-void ast_dfs_preorder(AST_Node *root);
+void ast_dfs_postorder(AST_Node *parent);
+int is_non_term(AST_Node *node);
 AST_Node *create_node_expr(TOKENS *token_head);
 AST_Node *create_node_mul(TOKENS *token_head);
 AST_Node *create_node_primary(TOKENS *token_head);
@@ -51,6 +52,7 @@ AST_Node *create_node_var(TOKENS *var_token);
 AST_Node *create_node_assign(AST_Node *left, AST_Node *right);
 
 TOKENS *cur_token;
+int temp_destination_entry;
 
 /**
  *  @brief ENTRY POINT
@@ -534,23 +536,55 @@ void print_ast_block(Block *block)
     convert_blocktype_to_string(block->type);
     printf("\n");
     for(AST_Node_List *liter = block->ast_head; liter != NULL; liter = liter->next){
-        ast_dfs_preorder(liter->data);
+        ast_dfs_postorder(liter->data);
     }
     printf("\n");
 }
 
 /* preorderな深さ優先探索でASTを4つ組順に巡回 */
-void ast_dfs_preorder(AST_Node *root) {
-    if(root != NULL) {
-        if(root->kind == AST_NUM) printf("%d\n", root->value);
-        if(root->kind == AST_VAR) printf("%s\n", root->var);
-        if(root->kind == AST_ASSIGN) printf("=\n");
-        if(root->kind == AST_ADD) printf("+\n");
-        if(root->kind == AST_SUB) printf("-\n");
-        if(root->kind == AST_MUL) printf("*\n");
-        if(root->kind == AST_DIV) printf("/\n");
-        ast_dfs_preorder(root->left); // 左ノードへ移動
-        ast_dfs_preorder(root->right); // 右ノードへ移動
+void ast_dfs_postorder(AST_Node *parent) {
+    if(parent != NULL) {
+        ast_dfs_postorder(parent->left);
+        ast_dfs_postorder(parent->right);
+        if(is_non_term(parent)) {
+            printf("(");
+            temp_destination_entry++;
+            parent->temp_entry = temp_destination_entry;
+            if(parent->kind == AST_ADD) printf("+, ");
+            if(parent->kind == AST_SUB) printf("-, ");
+            if(parent->kind == AST_MUL) printf("*, ");
+            if(parent->kind == AST_DIV) printf("/, ");
+            if(parent->kind == AST_ASSIGN) {
+                printf("=, ");
+                temp_destination_entry = 0;
+            }
+            if(parent->kind != AST_ASSIGN) printf("t%d, ", temp_destination_entry);
+            if(parent->left->kind == AST_NUM) {
+                printf("%d, ", parent->left->value);
+            } else if(parent->left->kind == AST_VAR) {
+                printf("%s, ", parent->left->var);
+            } else {
+                printf("t%d, ", parent->left->temp_entry);
+            }
+            if(parent->right->kind == AST_NUM) {
+                printf("%d", parent->right->value);
+            } else if(parent->right->kind == AST_VAR) {
+                printf("%s", parent->right->var);
+            } else {
+                printf("t%d", parent->right->temp_entry);
+            }
+            printf(")\n");
+        }
+    }
+}
+
+int is_non_term(AST_Node *node)
+{
+    AST_Node_Kind type = node->kind;
+    if(type == AST_ADD || type == AST_SUB || type == AST_MUL || type == AST_DIV || type == AST_ASSIGN) {
+        return 1;
+    }else{
+        return 0;
     }
 }
 

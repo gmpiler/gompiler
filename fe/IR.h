@@ -82,6 +82,7 @@ struct AST_Node {
     AST_Node *right;
     int value;
     char var[MAX_TOKENNAME_SIZE];
+    int temp_entry;
 };
 
 typedef struct AST_Node_List AST_Node_List;
@@ -91,6 +92,5 @@ struct AST_Node_List {
     struct AST_Node_List *prev;
     struct AST_Node_List *next;
 };
-
 
 #endif
