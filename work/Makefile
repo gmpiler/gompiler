@@ -15,8 +15,11 @@ all:
 
 # Compile source file
 	cp ../src/$(FILENAME).c ./$(FILENAME).c
-	./fe ../src/$(FILENAME).c $(FILENAME).ir
+	./fe ../src/$(FILENAME).c $(FILENAME).s
 	chmod u+x fe
+
+# Execution
+	gcc $(FILENAME).s -o executable.elf
 
 # Clean
 clean:

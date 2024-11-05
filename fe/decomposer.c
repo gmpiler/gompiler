@@ -643,41 +643,6 @@ void append_qr(Quadruple_List *list, Quadruple *new_qr)
         iter->next = new_qr_list;
     }
 }
-// void ast_dfs_postorder(AST_Node *parent) {
-//     if(parent != NULL) {
-//         ast_dfs_postorder(parent->left);
-//         ast_dfs_postorder(parent->right);
-//         if(is_non_term(parent)) {
-//             printf("(");
-//             temp_destination_entry++;
-//             parent->temp_entry = temp_destination_entry;
-//             if(parent->kind == AST_ADD) printf("+, ");
-//             if(parent->kind == AST_SUB) printf("-, ");
-//             if(parent->kind == AST_MUL) printf("*, ");
-//             if(parent->kind == AST_DIV) printf("/, ");
-//             if(parent->kind == AST_ASSIGN) {
-//                 printf("=, ");
-//                 temp_destination_entry = 0;
-//             }
-//             if(parent->kind != AST_ASSIGN) printf("t%d, ", temp_destination_entry);
-//             if(parent->left->kind == AST_NUM) {
-//                 printf("%d, ", parent->left->value);
-//             } else if(parent->left->kind == AST_VAR) {
-//                 printf("%s, ", parent->left->var);
-//             } else {
-//                 printf("t%d, ", parent->left->temp_entry);
-//             }
-//             if(parent->right->kind == AST_NUM) {
-//                 printf("%d", parent->right->value);
-//             } else if(parent->right->kind == AST_VAR) {
-//                 printf("%s", parent->right->var);
-//             } else {
-//                 printf("t%d", parent->right->temp_entry);
-//             }
-//             printf(")\n");
-//         }
-//     }
-// }
 
 int is_non_term(AST_Node *node)
 {
