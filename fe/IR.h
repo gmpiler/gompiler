@@ -55,7 +55,7 @@ typedef struct block {
     struct statement *stm_head;
     struct tokens *token_head;
     struct tokens *expr_head;
-    struct AST_Node_List *ast_head;  // Listがよい
+    struct AST_Node_List *ast_head;
     struct block *prev;
     struct block *next;
     struct block *inner;

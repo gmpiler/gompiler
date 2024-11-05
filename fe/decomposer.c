@@ -5,7 +5,6 @@
 #include <ctype.h>
 #include "decomposer.h"
 #include "token.h"
-#include "IR.h"
 
 #define SIZE 256            // codeの1行あたりのMAX文字数
 
@@ -18,7 +17,7 @@ void set_token(TOKENS *root_token, char* token, int key);
 void set_token_type(TOKENS *node, char *token);
 void append_token(TOKENS *root_token, TOKENS *new_node);
 void tokenize_others(TOKENS *root_token);
-void analyze_tokens(TOKENS *root);
+void analyze_tokens(TOKENS *root, Funcs *func_head);
 void init_analyze_token(TOKENS *root);
 int remains_to_be_analyzed(TOKENS *root);
 int check_split(char c);
@@ -42,6 +41,7 @@ void print_space(int level);
 void construct_ast(Funcs *func_head);
 
 int consume_token(char c);
+void ast_dfs_preorder(AST_Node *root);
 AST_Node *create_node_expr(TOKENS *token_head);
 AST_Node *create_node_mul(TOKENS *token_head);
 AST_Node *create_node_primary(TOKENS *token_head);
@@ -56,7 +56,7 @@ TOKENS *cur_token;
  *  @brief ENTRY POINT
  *  tokenize original codes here
  */
-void decomposer(char code[][SIZE], int codenum)
+void decomposer(char code[][SIZE], int codenum, Funcs *func_head)
 {
     init_codes(code, codenum);
     printf("--- decomposer ---\n");
@@ -126,21 +126,19 @@ void decomposer(char code[][SIZE], int codenum)
 #endif
 
 /* --- TOKENIZER(PARSER) --- */
-    analyze_tokens(root);
+    analyze_tokens(root, func_head);
 
 }
 
 /**
  * @brief entry point of parser
  */
-void analyze_tokens(TOKENS *root)
+void analyze_tokens(TOKENS *root, Funcs *func_head)
 {
     init_analyze_token(root);
     printf("--- tokens_analyzer ---\n");
 /* ---トークンの解析系 --- */
     TOKENS  *token_iter;
-    Funcs   *func_head = (Funcs*)malloc(sizeof(Funcs));
-    func_head->type = F_ROOT;
     /**
      * @brief 全てのトークンを解析する
      *
@@ -327,6 +325,11 @@ void analyze_tokens(TOKENS *root)
 
     printf("\n--- AST constructor ---\n");
     construct_ast(func_head);
+
+#ifdef DEBUG
+    printf("\n--- AST Info ---\n");
+    print_ast_all(func_head);
+#endif
 }
 
 /* --- for parser --- */
@@ -360,9 +363,6 @@ void construct_ast_block(Block *block)
         if(cur_token->type == RET) break;
         if(cur_token->type == TYPE) cur_token = cur_token->next->next->next; // TODO: declaration, expecting <TYPE> <VAR> <;>
         if(cur_token->type == VAR) { // assign, expecting <VAR> <ASSIGN> <expr>
-        /**
-         * TODO: ast_headにはAST_Node_Listの先頭を渡す
-         */
             AST_Node *var_node  = create_node_var(cur_token);
             AST_Node *parent    = create_node_assign(var_node, create_node_expr(cur_token->next->next));
             append_ast(ast_list, parent);
@@ -506,6 +506,52 @@ AST_Node *create_node_assign(AST_Node *left, AST_Node *right)
     parent->right = right;
 
     return parent;
+}
+
+void print_ast_all(Funcs *func_head)
+{
+    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+        printf(">> In function %s\n", func_iter->name);
+        print_ast_blocks(func_iter->block_head);
+    }
+}
+
+void print_ast_blocks(Block *block)
+{
+    for(Block *b = block; b != NULL; b = b->next){
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+            print_ast_block(b);
+            print_ast_blocks(b->inner);
+        }else{
+            print_ast_block(b);
+        }
+    }
+}
+
+void print_ast_block(Block *block)
+{
+    printf("Block ");
+    convert_blocktype_to_string(block->type);
+    printf("\n");
+    for(AST_Node_List *liter = block->ast_head; liter != NULL; liter = liter->next){
+        ast_dfs_preorder(liter->data);
+    }
+    printf("\n");
+}
+
+/* preorderな深さ優先探索でASTを4つ組順に巡回 */
+void ast_dfs_preorder(AST_Node *root) {
+    if(root != NULL) {
+        if(root->kind == AST_NUM) printf("%d\n", root->value);
+        if(root->kind == AST_VAR) printf("%s\n", root->var);
+        if(root->kind == AST_ASSIGN) printf("=\n");
+        if(root->kind == AST_ADD) printf("+\n");
+        if(root->kind == AST_SUB) printf("-\n");
+        if(root->kind == AST_MUL) printf("*\n");
+        if(root->kind == AST_DIV) printf("/\n");
+        ast_dfs_preorder(root->left); // 左ノードへ移動
+        ast_dfs_preorder(root->right); // 右ノードへ移動
+    }
 }
 
 void print_all_blocks(Funcs *func_head)

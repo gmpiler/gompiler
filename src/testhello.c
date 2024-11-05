@@ -25,7 +25,7 @@ int main(void) /* function <main> */
             a = a + i;
             /* IF Block */
             if(a > 0) {
-                /* BASIC Block(of "if") */
+                /* BASIC Block(of "IF") */
                 a =2;
             }
             /* BASIC Block */

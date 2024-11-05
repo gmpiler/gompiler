@@ -35,7 +35,9 @@ int main(int argc, char *argv[])
     }
 
 /* --- TOKENIZER --- */
-    decomposer(code, codeline);
+    Funcs   *func_head = (Funcs*)malloc(sizeof(Funcs));
+    func_head->type = F_ROOT;
+    decomposer(code, codeline, func_head);
 
 /* --- PRINT MODIFIED CODE --- */
     /**
