@@ -19,6 +19,8 @@ void op_generator_x86_64(Quadruple *qr, FILE *dstfile);
  */
 int register_x86_64[4];
 void init_registers_x86_64();
+int search_empty_reg();
+void get_empty_reg_name(int reg_num, char *dst_reg_name);
 
 /**
  * @brief ENTRY POINT of gompiler backend
@@ -83,13 +85,20 @@ void op_generator_x86_64(Quadruple *qr, FILE *dstfile)
         fprintf(dstfile, "\tpush %d\n", qr->src_op2->num);
         popcount++;
     }
+    char empty_reg_name[5];
     switch(popcount) {
         case 1:
-            fprintf(dstfile, "\tpop %rcx\n");
+            fprintf(dstfile, "\tpop ");
+            get_empty_reg_name(search_empty_reg(), empty_reg_name);
+            fprintf(dstfile, "%s\n", empty_reg_name);
             break;
         case 2:
-            fprintf(dstfile, "\tpop %rcx\n");
-            fprintf(dstfile, "\tpop %rdx\n");
+            fprintf(dstfile, "\tpop ");
+            get_empty_reg_name(search_empty_reg(), empty_reg_name);
+            fprintf(dstfile, "%s\n", empty_reg_name);
+            fprintf(dstfile, "\tpop ");
+            get_empty_reg_name(search_empty_reg(), empty_reg_name);
+            fprintf(dstfile, "%s\n", empty_reg_name);
             break;
         default:
             break;
@@ -115,10 +124,53 @@ void op_generator_x86_64(Quadruple *qr, FILE *dstfile)
     }
 }
 
+// 未使用にセット
 void init_registers_x86_64()
 {
     for(int i = 0; i < 4; i++){
         register_x86_64[i] = 0;
+    }
+}
+
+int search_empty_reg()
+{
+    int is_empty = -1;
+    for(int i = 0; i < 4; i++){
+        if(register_x86_64[i] == 0) {
+            is_empty = i;
+        }
+    }
+    if(is_empty == -1) printf("[!] there're no regs available\n");
+    return is_empty;
+}
+
+// 0: rax, 1: rcx, 2: rdx, 3:rbx
+void get_empty_reg_name(int reg_num, char *dst_reg_name)
+{
+    for(int i = 0; i < 5; i++){
+        dst_reg_name[i] = '\0';
+    }
+    switch(reg_num) {
+        case -1:
+            break;
+        case 0:
+            register_x86_64[0] = 1;
+            strcpy(dst_reg_name, "%rax");
+            break;
+        case 1:
+            register_x86_64[1] = 1;
+            strcpy(dst_reg_name, "%rcx");
+            break;
+        case 2:
+            register_x86_64[2] = 1;
+            strcpy(dst_reg_name, "%rdx");
+            break;
+        case 3:
+            register_x86_64[3] = 1;
+            strcpy(dst_reg_name, "%rbx");
+            break;
+        default:
+            break;
     }
 }
 
