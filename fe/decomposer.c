@@ -4,7 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "decomposer.h"
-#include "token.h"
+#include "../common/token.h"
 
 #define SIZE 256            // codeの1行あたりのMAX文字数
 
