@@ -12,8 +12,8 @@
             "program": "/home/sota0147/work/work/gompiler",
             //引数．オプションなどを都度変更
             "args": [
-                "testblock.c",
-                "testblock.s",
+                "testadd.c",
+                "testadd.s",
             ],
             "stopAtEntry": false,
             "cwd": "/home/sota0147/work/work", //カレントリワーキングディレクトリ
@@ -35,6 +35,35 @@
             ]
         },{
             "name": "Gompiler - be",
+            "type": "cppdbg",
+            "request": "launch",
+            //mmpの場所
+            "program": "/home/sota0147/work/gompiler/work/gompiler",
+            //引数．オプションなどを都度変更
+            "args": [
+                "testadd.c",
+                "testadd.s",
+            ],
+            "stopAtEntry": false,
+            "cwd": "/home/sota0147/work/gompiler/work", //カレントリワーキングディレクトリ
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },{
+            "name": "gcc",
             "type": "cppdbg",
             "request": "launch",
             //mmpの場所

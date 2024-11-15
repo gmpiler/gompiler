@@ -48,6 +48,7 @@ typedef struct func {
     struct func *prev;
     struct func *next;
     int has_bytestack;              // ゆくゆく各ブロックに設置
+    struct Stack_List *stack_head;
 } Funcs;
 
 typedef struct block {
@@ -63,7 +64,20 @@ typedef struct block {
     struct block *inner;
     struct block *outer;
     struct func  *func_head;
+    struct func  *func;
 } Block;
+
+struct stack {
+    char symbol_name[MAX_TOKENNAME_SIZE];
+    int byte;
+    int offset;
+};
+
+struct Stack_List {
+    struct stack *data;
+    struct Stack_List *prev;
+    struct Stack_List *next;
+};
 
 /* --- for parser --- */
 typedef enum {
@@ -73,7 +87,8 @@ typedef enum {
     AST_DIV,
     AST_NUM,
     AST_VAR,
-    AST_ASSIGN
+    AST_ASSIGN,
+    AST_RET
 } AST_Node_Kind;
 
 typedef struct AST_Node AST_Node;

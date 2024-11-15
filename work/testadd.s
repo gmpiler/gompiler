@@ -4,7 +4,7 @@ main:
 # function stack epilogue
 	push rbp
 	mov rbp, rsp
-	sub rsp, 4
+	sub rsp, 8
 # function body
 ## right value evaluation
 	push 1
@@ -22,6 +22,15 @@ main:
 	pop rdi
 	pop rax
 	imul rax, rdi
+	push rax
+## assign the value to left var
+	pop rax
+	mov 0[rbp], rax
+## right value evaluation
+	push 3
+	mov rax, 0[rbp]
+	pop rdi
+	add rax, rdi
 	push rax
 ## assign the value to left var
 	pop rax

@@ -39,6 +39,7 @@ void print_all_blocks(Funcs *func_head);
 void convert_blocktype_to_string(enum block_type type);
 void print_space(int level);
 void construct_ast(Funcs *func_head);
+void replace_root_to_func(Funcs *new_func, Funcs *func_head);
 
 int consume_token(char c);
 void ast_dfs_postorder(AST_Node *parent, Quadruple_List *qr_list_head);
@@ -236,6 +237,7 @@ void analyze_tokens(TOKENS *root, Funcs *func_head)
                                     Block *block = (Block*)malloc(sizeof(Block));
                                     block->type = B_BASIC;
                                     block->level = nest_level;
+                                    block->func  = new_func;
                                     TOKENS *root_token = (TOKENS*)malloc(sizeof(TOKENS));
                                     strcpy(root_token->value, func_token_iter->value);
                                     root_token->type = func_token_iter->type;
@@ -252,12 +254,14 @@ void analyze_tokens(TOKENS *root, Funcs *func_head)
                                     Block *next_block = (Block*)malloc(sizeof(Block));
                                     next_block->type = convert_tokentype_to_blocktype(block_maker->type);
                                     next_block->level = nest_level;
+                                    next_block->func  = new_func;
                                     // next_block->expr_head = copy_token_list(expr_buffer);
                                     next_block->expr_head = obtain_arg_expr(block_maker);
                                     append_block(current_block, next_block, 2);
                                     Block *new_inner_block = (Block*)malloc(sizeof(Block));
                                     new_inner_block->level = nest_level;
                                     new_inner_block->type = B_BASIC;
+                                    new_inner_block->func = new_func;
                                     TOKENS *root_token3 = (TOKENS*)malloc(sizeof(TOKENS));
                                     strcpy(root_token3->value, func_token_iter->value);
                                     root_token3->type = func_token_iter->type;
@@ -284,6 +288,7 @@ void analyze_tokens(TOKENS *root, Funcs *func_head)
                                     Block *new_outer_block_next = (Block*)malloc(sizeof(Block));
                                     new_outer_block_next->level = nest_level;
                                     new_outer_block_next->type = B_BASIC;
+                                    new_outer_block_next->func = new_func;
                                     TOKENS *root_token2 = (TOKENS*)malloc(sizeof(TOKENS));
                                     strcpy(root_token2->value, func_token_iter->value);
                                     root_token2->type = func_token_iter->type;
@@ -364,7 +369,14 @@ void construct_ast_block(Block *block)
     cur_token = block->token_head;
     AST_Node_List *ast_list = (AST_Node_List*)malloc(sizeof(AST_Node_List));
     while(cur_token != NULL) {
-        if(cur_token->type == RET) break;
+        if(cur_token->type == RET) {
+            AST_Node *ret = (AST_Node*)malloc(sizeof(AST_Node));
+            ret->kind = AST_RET;
+            ret->left = ret->right = NULL;
+            strcpy(ret->var, cur_token->next->value);
+            append_ast(ast_list, ret);
+            break;
+        }
         if(cur_token->type == TYPE) cur_token = cur_token->next->next->next; // TODO: declaration, expecting <TYPE> <VAR> <;>
         if(cur_token->type == VAR) { // assign, expecting <VAR> <ASSIGN> <expr>
             AST_Node *var_node  = create_node_var(cur_token);
@@ -878,6 +890,7 @@ void create_func(Funcs *new_func, char *type, char *name)
         Block *root_block = (Block*)malloc(sizeof(Block));
         new_func->block_head = root_block;
         root_block->func_head = new_func;
+        root_block->func      = new_func;
         TOKENS *root_token_base = (TOKENS*)malloc(sizeof(TOKENS));
         root_token_base->type = ROOT;
         root_block->token_head = root_token_base;
@@ -1235,6 +1248,7 @@ void append_func(Funcs *func_head, Funcs *new_func)
         strcpy(func_head->name, new_func->name);
         func_head->block_head = new_func->block_head;
         strcpy(func_head->arg, new_func->arg);
+        replace_root_to_func(new_func, func_head);
     }else{
         Funcs *iter = func_head;
         while(iter->next != NULL){
@@ -1375,6 +1389,23 @@ void init_codes(char code[][SIZE], int codenum)
             if(code[codeline][s] == '\n' || code[codeline][s] == '\r' || code[codeline][s] == '\r\n') {
                 code[codeline][s] = '\0';
             }
+        }
+    }
+}
+
+void replace_root_to_func(Funcs *new_func, Funcs *func_head)
+{
+    replace_root_to_func_blocks(new_func, func_head, new_func->block_head);
+}
+
+void replace_root_to_func_blocks(Funcs *new_func, Funcs *func_head, Block *block)
+{
+    for(Block *b = block; b != NULL; b = b->next){
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+            b->func = func_head;
+            replace_root_to_func_blocks(new_func, func_head, b->inner);
+        }else{
+            b->func = func_head;
         }
     }
 }

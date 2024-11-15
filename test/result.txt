@@ -1,0 +1,2 @@
+> @testcase testreturn => 0
+> @testcase testlocalvar => 24

@@ -12,6 +12,9 @@ void stackmachine_emulator_x86_64(Funcs* func_head, FILE *dstfile);
 void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile);
 void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile);
 void op_generator_x86_64(Quadruple *qr, FILE *dstfile);
+int find_offset(Funcs *func, char *symbol_name);
+
+char ret_var[MAX_TOKENNAME_SIZE];
 
 /**
  * @brief ENTRY POINT of gompiler backend
@@ -49,7 +52,7 @@ void stackmachine_emulator_x86_64(Funcs* func_head, FILE *dstfile)
         
         fprintf(dstfile, "# function stack prologue\n");
         /* 関数のスタック操作: エピローグ */
-        fprintf(dstfile, "\tmov rax, -4[rbp]\n");     // TODO: 今回はreturn -4[rbp](=a)だと決め打ち．本来はretのvalueを取ってくる
+        fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(func_iter, ret_var));
         fprintf(dstfile, "\tmov rsp, rbp\n");
         fprintf(dstfile, "\tpop rbp\n");
         fprintf(dstfile, "\tret\n");
@@ -72,55 +75,116 @@ void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile)
 void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile)
 {
     for(AST_Node_List *ast_iter = block->ast_head; ast_iter != NULL; ast_iter = ast_iter->next){
+        if(ast_iter->data->kind == AST_RET) {
+            for(int c = 0; c < MAX_TOKENNAME_SIZE; c++){
+                ret_var[c] = '\0';
+            }
+            strcpy(ret_var, ast_iter->data->var);
+            return;
+        }
         AST_Node *node_head = ast_iter->data->right;        // assignのexprを抽出
         fprintf(dstfile, "## right value evaluation\n");
-        code_generator_x86_64_stack(node_head, dstfile);    // 右辺の評価結果はraxにpushされる
+        code_generator_x86_64_stack(node_head, dstfile, block);    // 右辺の評価結果はraxにpushされる
         
         fprintf(dstfile, "## assign the value to left var\n");
         /* ここに，左辺値の評価結果であるraxを，右辺のメモリ領域に書き込む処理を追加 */
         fprintf(dstfile, "\tpop rax\n");
-        fprintf(dstfile, "\tmov -4[rbp], rax\n");     // TODO: オフセットは変数によって変える
+        fprintf(dstfile, "\tmov %d[rbp], rax\n", find_offset(block->func, ast_iter->data->left->var));     // TODO: オフセットは変数によって変える
     }
 }
 
-void code_generator_x86_64_stack(AST_Node *node, FILE *dstfile)
+/* 末尾の引数blockはfunc->stack_headを辿るため */
+void code_generator_x86_64_stack(AST_Node *node, FILE *dstfile, Block *block)
 {
     if(node->kind == AST_NUM) {
         fprintf(dstfile, "\tpush %d\n", node->value);
         return;
     }
-    /* ここに，VARである場合にメモリ領域から取得する処理を追加 */
-    if(node->kind == AST_VAR) { // 右辺の式中で変数が一つの場合．
-        fprintf(dstfile, "\tmov rcx, -4[rbp]\n");
+    if(node->kind == AST_VAR) {
+        // fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->var));
+        // VARの時に，メモリからレジスタへpopする処理は後続に任せる
         return;
     }
     // TODO: 変数が2つの場合はrdxを用いる
 
-    code_generator_x86_64_stack(node->left, dstfile);
-    code_generator_x86_64_stack(node->right, dstfile);
-
-            fprintf(dstfile, "\tpop rdi\n");
-            fprintf(dstfile, "\tpop rax\n");
-
+    code_generator_x86_64_stack(node->left, dstfile, block);
+    code_generator_x86_64_stack(node->right, dstfile, block);
 
     // TODO: 変数を使う場合の処理を追加
     switch(node->kind) {
         case AST_ADD:
-            fprintf(dstfile, "\tadd rax, rdi\n");
+            if(node->left->kind == AST_VAR && node->right->kind == AST_VAR) {   // ソースオペランドが2つともレジスタ
+                fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(block->func, node->left->var));
+                fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->right->var));
+                fprintf(dstfile, "\tadd rax, rcx\n");
+            }else if(node->left->kind == AST_VAR){   // ソースオペランドが1つだけレジスタ
+                fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(block->func, node->left->var));
+                fprintf(dstfile, "\tpop rdi\n");
+                fprintf(dstfile, "\tadd rax, rdi\n");
+            }else if(node->right->kind == AST_VAR){   // ソースオペランドが1つだけレジスタ
+                fprintf(dstfile, "\tpop rax\n");
+                fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->right->var));
+                fprintf(dstfile, "\tadd rax, rdi\n");
+            }else{  // 数値同士の演算
+                fprintf(dstfile, "\tpop rdi\n");
+                fprintf(dstfile, "\tpop rax\n");
+                fprintf(dstfile, "\tadd rax, rdi\n");
+            }
             break;
         case AST_SUB:
-            fprintf(dstfile, "\tsub rax, rdi\n");
+            if(node->left->kind == AST_VAR && node->right->kind == AST_VAR) {   // ソースオペランドが2つともレジスタ
+                fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(block->func, node->left->var));
+                fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->right->var));
+                fprintf(dstfile, "\tsub rax, rcx\n");
+            }else if(node->left->kind == AST_VAR){   // ソースオペランドが1つだけレジスタ
+                fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(block->func, node->left->var));
+                fprintf(dstfile, "\tpop rdi\n");
+                fprintf(dstfile, "\tsub rax, rdi\n");
+            }else if(node->right->kind == AST_VAR){   // ソースオペランドが1つだけレジスタ
+                fprintf(dstfile, "\tpop rax\n");
+                fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->right->var));
+                fprintf(dstfile, "\tsub rax, rdi\n");
+            }else{  // 数値同士の演算
+                fprintf(dstfile, "\tpop rdi\n");
+                fprintf(dstfile, "\tpop rax\n");
+                fprintf(dstfile, "\tsub rax, rdi\n");
+            }
             break;
         case AST_MUL:
-            fprintf(dstfile, "\timul rax, rdi\n");
+            if(node->left->kind == AST_VAR && node->right->kind == AST_VAR) {   // ソースオペランドが2つともレジスタ
+                fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(block->func, node->left->var));
+                fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->right->var));
+                fprintf(dstfile, "\timul rax, rcx\n");
+            }else if(node->left->kind == AST_VAR){   // ソースオペランドが1つだけレジスタ
+                fprintf(dstfile, "\tmov rax, %d[rbp]\n", find_offset(block->func, node->left->var));
+                fprintf(dstfile, "\tpop rdi\n");
+                fprintf(dstfile, "\timul rax, rdi\n");
+            }else if(node->right->kind == AST_VAR){   // ソースオペランドが1つだけレジスタ
+                fprintf(dstfile, "\tpop rax\n");
+                fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->right->var));
+                fprintf(dstfile, "\timul rax, rdi\n");
+            }else{  // 数値同士の演算
+                fprintf(dstfile, "\tpop rdi\n");
+                fprintf(dstfile, "\tpop rax\n");
+                fprintf(dstfile, "\timul rax, rdi\n");
+            };
             break;
         case AST_DIV:
+            // TODO: レジスタがソースの時のdiv処理追加
             fprintf(dstfile, "\tcqo\n");
             fprintf(dstfile, "\tidiv rdi\n");
             break;
     }
 
     fprintf(dstfile, "\tpush rax\n");
+}
+
+int find_offset(Funcs *func, char *symbol_name)
+{
+    for(struct Stack_List *siter = func->stack_head; siter != NULL; siter = siter->next){
+        if(strcmp(siter->data->symbol_name, symbol_name) == 0) return siter->data->offset;
+    }
+    return -1;
 }
 
 /* ------------------------------- */

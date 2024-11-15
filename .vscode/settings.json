@@ -2,6 +2,7 @@
     "files.associations": {
         "decomposer.h": "c",
         "type_traits": "c",
-        "stackmaker.h": "c"
+        "stackmaker.h": "c",
+        "unordered_map": "c"
     }
 }
