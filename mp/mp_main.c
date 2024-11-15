@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../common/IR.h"
+#include "stackmaker.h"
 
 #define DEBUG
 
@@ -14,5 +15,6 @@ void mp_main(Funcs *func_head, FILE *dstfile)
 {
     printf("*** GOMPILER MIDDLE PATH ***\n");
 
+    stackmaker(func_head);
     be_main(func_head, dstfile);
 }

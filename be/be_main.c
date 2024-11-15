@@ -13,15 +13,6 @@ void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile);
 void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile);
 void op_generator_x86_64(Quadruple *qr, FILE *dstfile);
 
-// /**
-//  *              0: rax, 1: rcx, 2: rdx, 3:rbx
-//  *  dim 1 ->    0: empty, num: temporary variable entry, minus num: for pop usage
-//  */
-// int register_x86_64[4];
-// void init_registers_x86_64();
-// int search_empty_reg();
-// void get_empty_reg_name(int reg_num, char *dst_reg_name, int whoisuser);
-
 /**
  * @brief ENTRY POINT of gompiler backend
  */
@@ -39,6 +30,108 @@ void be_main(Funcs *func_head, FILE *dstfile)
         codegen_x86_64(func_head, dstfile);
     }
 }
+
+/* for x86_64 target emulating a stach machine */
+void stackmachine_emulator_x86_64(Funcs* func_head, FILE *dstfile)
+{
+    fprintf(dstfile, ".intel_syntax noprefix\n");
+    fprintf(dstfile, ".globl main\n");
+    fprintf(dstfile, "main:\n");
+    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
+        /* 関数のスタック操作: プロローグ */
+        fprintf(dstfile, "# function stack epilogue\n");
+        fprintf(dstfile, "\tpush rbp\n");
+        fprintf(dstfile, "\tmov rbp, rsp\n");
+        fprintf(dstfile, "\tsub rsp, %d\n", func_iter->has_bytestack);
+        
+        fprintf(dstfile, "# function body\n");
+        stackmachine_emulator_x86_64_blocks(func_iter->block_head, dstfile);
+        
+        fprintf(dstfile, "# function stack prologue\n");
+        /* 関数のスタック操作: エピローグ */
+        fprintf(dstfile, "\tmov rax, -4[rbp]\n");     // TODO: 今回はreturn -4[rbp](=a)だと決め打ち．本来はretのvalueを取ってくる
+        fprintf(dstfile, "\tmov rsp, rbp\n");
+        fprintf(dstfile, "\tpop rbp\n");
+        fprintf(dstfile, "\tret\n");
+    }
+    // fprintf(dstfile, "\tret\n");
+}
+
+void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile)
+{
+    for(Block *b = block; b != NULL; b = b->next){
+        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
+            stackmachine_emulator_x86_64_block(b, dstfile);
+            stackmachine_emulator_x86_64_blocks(b->inner, dstfile);
+        }else{
+            stackmachine_emulator_x86_64_block(b, dstfile);
+        }
+    }
+}
+
+void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile)
+{
+    for(AST_Node_List *ast_iter = block->ast_head; ast_iter != NULL; ast_iter = ast_iter->next){
+        AST_Node *node_head = ast_iter->data->right;        // assignのexprを抽出
+        fprintf(dstfile, "## right value evaluation\n");
+        code_generator_x86_64_stack(node_head, dstfile);    // 右辺の評価結果はraxにpushされる
+        
+        fprintf(dstfile, "## assign the value to left var\n");
+        /* ここに，左辺値の評価結果であるraxを，右辺のメモリ領域に書き込む処理を追加 */
+        fprintf(dstfile, "\tpop rax\n");
+        fprintf(dstfile, "\tmov -4[rbp], rax\n");     // TODO: オフセットは変数によって変える
+    }
+}
+
+void code_generator_x86_64_stack(AST_Node *node, FILE *dstfile)
+{
+    if(node->kind == AST_NUM) {
+        fprintf(dstfile, "\tpush %d\n", node->value);
+        return;
+    }
+    /* ここに，VARである場合にメモリ領域から取得する処理を追加 */
+    if(node->kind == AST_VAR) { // 右辺の式中で変数が一つの場合．
+        fprintf(dstfile, "\tmov rcx, -4[rbp]\n");
+        return;
+    }
+    // TODO: 変数が2つの場合はrdxを用いる
+
+    code_generator_x86_64_stack(node->left, dstfile);
+    code_generator_x86_64_stack(node->right, dstfile);
+
+            fprintf(dstfile, "\tpop rdi\n");
+            fprintf(dstfile, "\tpop rax\n");
+
+
+    // TODO: 変数を使う場合の処理を追加
+    switch(node->kind) {
+        case AST_ADD:
+            fprintf(dstfile, "\tadd rax, rdi\n");
+            break;
+        case AST_SUB:
+            fprintf(dstfile, "\tsub rax, rdi\n");
+            break;
+        case AST_MUL:
+            fprintf(dstfile, "\timul rax, rdi\n");
+            break;
+        case AST_DIV:
+            fprintf(dstfile, "\tcqo\n");
+            fprintf(dstfile, "\tidiv rdi\n");
+            break;
+    }
+
+    fprintf(dstfile, "\tpush rax\n");
+}
+
+/* ------------------------------- */
+// /**
+//  *              0: rax, 1: rcx, 2: rdx, 3:rbx
+//  *  dim 1 ->    0: empty, num: temporary variable entry, minus num: for pop usage
+//  */
+// int register_x86_64[4];
+// void init_registers_x86_64();
+// int search_empty_reg();
+// void get_empty_reg_name(int reg_num, char *dst_reg_name, int whoisuser);
 
 // /* for x86_64 target register machine */
 // void codegen_x86_64(Funcs* func_head, FILE *dstfile)
@@ -247,69 +340,3 @@ void be_main(Funcs *func_head, FILE *dstfile)
 //             break;
 //     }
 // }
-
-/* for x86_64 target emulating a stach machine */
-void stackmachine_emulator_x86_64(Funcs* func_head, FILE *dstfile)
-{
-    fprintf(dstfile, ".intel_syntax noprefix\n");
-    fprintf(dstfile, ".globl main\n");
-    fprintf(dstfile, "main:\n");
-    for(Funcs *func_iter = func_head; func_iter != NULL; func_iter = func_iter->next){
-        stackmachine_emulator_x86_64_blocks(func_iter->block_head, dstfile);
-    }
-    fprintf(dstfile, "    pop rax\n");
-    fprintf(dstfile, "    ret\n");
-}
-
-void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile)
-{
-    for(Block *b = block; b != NULL; b = b->next){
-        if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
-            stackmachine_emulator_x86_64_block(b, dstfile);
-            stackmachine_emulator_x86_64_blocks(b->inner, dstfile);
-        }else{
-            stackmachine_emulator_x86_64_block(b, dstfile);
-        }
-    }
-}
-
-void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile)
-{
-    for(AST_Node_List *ast_iter = block->ast_head; ast_iter != NULL; ast_iter = ast_iter->next){
-        AST_Node *node_head = ast_iter->data->right;    // assignのexprを抽出
-        code_generator_x86_64_stack(node_head, dstfile);
-    }
-}
-
-void code_generator_x86_64_stack(AST_Node *node, FILE *dstfile)
-{
-    if(node->kind == AST_NUM) {
-        fprintf(dstfile, "    push %d\n", node->value);
-        return;
-    }
-
-    code_generator_x86_64_stack(node->left, dstfile);
-    code_generator_x86_64_stack(node->right, dstfile);
-
-            fprintf(dstfile, "    pop rdi\n");
-            fprintf(dstfile, "    pop rax\n");
-
-    switch(node->kind) {
-        case AST_ADD:
-            fprintf(dstfile, "    add rax, rdi\n");
-            break;
-        case AST_SUB:
-            fprintf(dstfile, "    sub rax, rdi\n");
-            break;
-        case AST_MUL:
-            fprintf(dstfile, "    imul rax, rdi\n");
-            break;
-        case AST_DIV:
-            fprintf(dstfile, "    cqo\n");
-            fprintf(dstfile, "    idiv rdi\n");
-            break;
-    }
-
-    fprintf(dstfile, "    push rax\n");
-}
-

@@ -8,6 +8,7 @@ C_OPT = -g
 # Target
 # FILENAME = testcalculator
 FILENAME = testadd
+# FILENAME = testblock
 
 all:
 # Make toolchain
@@ -17,12 +18,13 @@ all:
 
 ## Middle Path
 	$(CC) -g -c ../mp/mp_main.c -o mp_main.o
+	$(CC) -g -c ../mp/stackmaker.c -o mp_stackmaker.o
 
 ## Back End
 	$(CC) -g -c ../be/be_main.c -o be.o
 
 ## Link all
-	$(CC) -g fe.o fe_decomposer.o mp_main.o be.o -o gompiler
+	$(CC) -g fe.o fe_decomposer.o mp_main.o mp_stackmaker.o be.o -o gompiler
 
 # Compile source file
 	cp ../src/$(FILENAME).c ./$(FILENAME).c

@@ -47,6 +47,7 @@ typedef struct func {
     char arg[MAX_TOKENNAME_SIZE];   // ゆくゆく複数引数対応
     struct func *prev;
     struct func *next;
+    int has_bytestack;              // ゆくゆく各ブロックに設置
 } Funcs;
 
 typedef struct block {

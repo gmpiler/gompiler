@@ -9,11 +9,11 @@
             "type": "cppdbg",
             "request": "launch",
             //mmpの場所
-            "program": "/home/sota0147/work/work/fe",
+            "program": "/home/sota0147/work/work/gompiler",
             //引数．オプションなどを都度変更
             "args": [
-                "testhello.c",
-                "testhello.ir",
+                "testblock.c",
+                "testblock.s",
             ],
             "stopAtEntry": false,
             "cwd": "/home/sota0147/work/work", //カレントリワーキングディレクトリ

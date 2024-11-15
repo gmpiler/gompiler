@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "decomposer.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "stackmaker.h": "c"
     }
 }
