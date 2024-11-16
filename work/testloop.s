@@ -14,9 +14,9 @@ main:
 	push 0
 	pop rcx
 	mov 0[rbp], rcx
-.L1:
+.L0:
 	cmp rcx, 9
-	jns .L2
+	jns .L0
 ## right value evaluation
 	mov rax, -4[rbp]
 	mov rcx, 0[rbp]
@@ -29,13 +29,13 @@ main:
 	push 1
 	mov rax, 0[rbp]
 	pop rdi
-	add rax, rdi
+	sub rax, rdi
 	push rax
 ## assign the value to left var
 	pop rax
 	mov 0[rbp], rax
-	jmp .L1
-.L2:
+	jmp .L0
+.L1:
 # function stack prologue
 	mov rax, -4[rbp]
 	mov rsp, rbp

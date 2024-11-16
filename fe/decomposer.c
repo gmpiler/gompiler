@@ -416,8 +416,13 @@ void construct_ast_block_condition(Block *block)
                     token_one->type = NUM;
                     strcpy(token_one->value, "1");
                     AST_Node *node_one          = create_node_num(token_one);               // 1
-                    AST_Node *node_add          = create_node(AST_ADD, loop_var, node_one); // i + 1
-                    AST_Node *parent            = create_node_assign(loop_var, node_add);   // i = i + 1
+                    AST_Node *node_op;
+                    if(strcmp(cur_token->next->value, "+") == 0) {
+                        node_op          = create_node(AST_ADD, loop_var, node_one); // i + 1
+                    }else if(strcmp(cur_token->next->value, "-") == 0){
+                        node_op          = create_node(AST_SUB, loop_var, node_one); // i + 1
+                    }
+                    AST_Node *parent            = create_node_assign(loop_var, node_op);   // i = i + 1
                     append_ast(ast_list, parent);
                     cur_token = (cur_token->next->next->next == NULL) ? NULL : cur_token->next->next->next;
                     continue;
