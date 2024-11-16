@@ -64,7 +64,7 @@ void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile)
 {
     for(Block *b = block; b != NULL; b = b->next){
         if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
-            if(b->ast_head->data != NULL) stackmachine_emulator_x86_64_block(b, dstfile);
+            if(b->ast_head->data != NULL) stackmachine_emulator_x86_64_block_condition(b, dstfile);
             stackmachine_emulator_x86_64_blocks(b->inner, dstfile);
         }else{
             if(b->ast_head->data != NULL) stackmachine_emulator_x86_64_block(b, dstfile);
@@ -89,7 +89,47 @@ void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile)
         fprintf(dstfile, "## assign the value to left var\n");
         /* ここに，左辺値の評価結果であるraxを，右辺のメモリ領域に書き込む処理を追加 */
         fprintf(dstfile, "\tpop rax\n");
-        fprintf(dstfile, "\tmov %d[rbp], rax\n", find_offset(block->func, ast_iter->data->left->var));     // TODO: オフセットは変数によって変える
+        fprintf(dstfile, "\tmov %d[rbp], rax\n", find_offset(block->func, ast_iter->data->left->var));
+    }
+}
+
+/**
+ * @brief 条件分岐ブロックの場合のast_head(conditional expressions)を処理
+ * [方針] 
+ * 条件分岐ブロックにラベルや初期化・判定コードを追加
+ * また，条件分岐ブロックより1つinner階層における，末尾のブロックのast_listにconditional branchを追加
+ * 
+ * Block FOR
+ * i = 0;
+ * :L1
+ * if(!(i < N)) jump L2
+ * 
+ *     Blocks inner
+ * 
+ *     i++;
+ *     jump L1 
+ * :L2
+ */
+void stackmachine_emulator_x86_64_block_condition(Block *block, FILE *dstfile) {
+    if(block->type == B_FOR) {  // ひとまず単一expr×3の場合
+        /* 初期化コード */
+        fprintf(dstfile, "\tpush %d\n", block->ast_head->next->next->data->value);                     // for(i = num      のnum
+        fprintf(dstfile, "\tpop rcx\n");
+        fprintf(dstfile, "\tcmp rcx, %d\n", block->ast_head->next->next->next->next->next->next->data->value); // i < upper(num)の場合
+        if(block->ast_head->next->next->next->next->next->data->kind == AST_CMP_LT) {
+            fprintf(dstfile, "\tjns .L2, %d\n", block->ast_head->next->next->next->next->next->next->data->value); // i < upper(num)の場合
+        }
+
+        /* ラベル */
+        fprintf(dstfile, ".L1\n");
+
+        // TODO: ループ誘導変数の更新と，L1への無s条件ジャンプ
+        Block *iter;
+        for(iter = block->inner; iter->next != NULL; iter = iter->next){
+        }
+        append_ast(iter->ast_head, block->ast_head->next->next->next->next->next->next->next);  // TODO: i++とL1への無条件ジャンプ，L2ラベルを付けたい
+
+
     }
 }
 
@@ -100,17 +140,11 @@ void code_generator_x86_64_stack(AST_Node *node, FILE *dstfile, Block *block)
         fprintf(dstfile, "\tpush %d\n", node->value);
         return;
     }
-    if(node->kind == AST_VAR) {
-        // fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, node->var));
-        // VARの時に，メモリからレジスタへpopする処理は後続に任せる
-        return;
-    }
-    // TODO: 変数が2つの場合はrdxを用いる
+    if(node->kind == AST_VAR) return; // VARの時に，メモリからレジスタへpopする処理は後続に任せる
 
     code_generator_x86_64_stack(node->left, dstfile, block);
     code_generator_x86_64_stack(node->right, dstfile, block);
 
-    // TODO: 変数を使う場合の処理を追加
     switch(node->kind) {
         case AST_ADD:
             if(node->left->kind == AST_VAR && node->right->kind == AST_VAR) {   // ソースオペランドが2つともレジスタ
