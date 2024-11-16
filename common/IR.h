@@ -91,6 +91,8 @@ typedef enum {
     AST_CMP_GT,
     AST_CMP_LT,
     AST_CMP_EQ,
+    AST_JMP,
+    AST_LABEL,
     AST_RET
 } AST_Node_Kind;
 
@@ -100,7 +102,7 @@ struct AST_Node {
     AST_Node_Kind kind;
     AST_Node *left;
     AST_Node *right;
-    int value;
+    int value;  // num or label entry
     char var[MAX_TOKENNAME_SIZE];
     int temp_entry; // あるassignの中で，kindが非終端記号かつtemp_entryが同一ならば，同じレジスタ
 };

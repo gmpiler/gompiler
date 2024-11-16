@@ -9,14 +9,14 @@
             "type": "cppdbg",
             "request": "launch",
             //mmpの場所
-            "program": "/home/sota0147/work/work/gompiler",
+            "program": "/home/sota0147/work/gompiler/work/gompiler",
             //引数．オプションなどを都度変更
             "args": [
                 "testloop.c",
                 "testloop.s",
             ],
             "stopAtEntry": false,
-            "cwd": "/home/sota0147/work/work", //カレントリワーキングディレクトリ
+            "cwd": "/home/sota0147/work/gompiler/work", //カレントリワーキングディレクトリ
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",

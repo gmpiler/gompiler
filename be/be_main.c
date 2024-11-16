@@ -80,7 +80,15 @@ void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile)
                 ret_var[c] = '\0';
             }
             strcpy(ret_var, ast_iter->data->var);
-            return;
+            continue;
+        }
+        if(ast_iter->data->kind == AST_JMP) {
+            fprintf(dstfile, "\tjmp .L%d\n", ast_iter->data->value);
+            continue;
+        }
+        if(ast_iter->data->kind == AST_LABEL) {
+            fprintf(dstfile, ".L%d:\n", ast_iter->data->value);
+            continue;
         }
         AST_Node *node_head = ast_iter->data->right;        // assignのexprを抽出
         fprintf(dstfile, "## right value evaluation\n");
@@ -113,23 +121,32 @@ void stackmachine_emulator_x86_64_block(Block *block, FILE *dstfile)
 void stackmachine_emulator_x86_64_block_condition(Block *block, FILE *dstfile) {
     if(block->type == B_FOR) {  // ひとまず単一expr×3の場合
         /* 初期化コード */
-        fprintf(dstfile, "\tpush %d\n", block->ast_head->next->next->data->value);                     // for(i = num      のnum
+        fprintf(dstfile, "\tpush %d\n", block->ast_head->data->right->value);   // = -> upper                   // for(i = num      のnum
         fprintf(dstfile, "\tpop rcx\n");
-        fprintf(dstfile, "\tcmp rcx, %d\n", block->ast_head->next->next->next->next->next->next->data->value); // i < upper(num)の場合
-        if(block->ast_head->next->next->next->next->next->data->kind == AST_CMP_LT) {
-            fprintf(dstfile, "\tjns .L2, %d\n", block->ast_head->next->next->next->next->next->next->data->value); // i < upper(num)の場合
-        }
+        fprintf(dstfile, "\tmov %d[rbp], rcx\n", find_offset(block->func, block->ast_head->data->left->var));//TODO!!!
 
         /* ラベル */
-        fprintf(dstfile, ".L1\n");
+        fprintf(dstfile, ".L1:\n");
 
-        // TODO: ループ誘導変数の更新と，L1への無s条件ジャンプ
+        /* ループ後にジャンプ */
+        fprintf(dstfile, "\tcmp rcx, %d\n", block->ast_head->next->data->right->value - 1); // i < upper(num)の場合．'<'なので-1
+        if(block->ast_head->next->data->kind == AST_CMP_LT) {
+            fprintf(dstfile, "\tjns .L2\n");
+        }
+
+        // TODO: ループ誘導変数の更新と，L1への無条件ジャンプ
         Block *iter;
         for(iter = block->inner; iter->next != NULL; iter = iter->next){
         }
-        append_ast(iter->ast_head, block->ast_head->next->next->next->next->next->next->next);  // TODO: i++とL1への無条件ジャンプ，L2ラベルを付けたい
-
-
+        AST_Node *ast_jump = (AST_Node*)malloc(sizeof(AST_Node));
+        ast_jump->kind = AST_JMP;
+        ast_jump->value = 1; // jmp L1の1
+        AST_Node *ast_label = (AST_Node*)malloc(sizeof(AST_Node));
+        ast_label->kind = AST_LABEL;
+        ast_label->value = 2; // .L2の2
+        append_ast(iter->ast_head, block->ast_head->next->next->data);  // append i++
+        append_ast(iter->ast_head, ast_jump);
+        append_ast(iter->ast_head, ast_label);
     }
 }
 
