@@ -1,2 +1,3 @@
 > @testcase testreturn => 0
 > @testcase testlocalvar => 24
+> @testcase testloop => 45

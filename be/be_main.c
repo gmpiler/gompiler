@@ -130,9 +130,11 @@ void stackmachine_emulator_x86_64_block_condition(Block *block, FILE *dstfile) {
         fprintf(dstfile, ".L%d:\n", label_entry);
 
         /* ループ後にジャンプ */
-        fprintf(dstfile, "\tcmp rcx, %d\n", block->ast_head->next->data->right->value - 1); // i < upper(num)の場合．'<'なので-1
+        fprintf(dstfile, "\tmov rcx, %d[rbp]\n", find_offset(block->func, block->ast_head->data->left->var));
+        // fprintf(dstfile, "\tcmp rcx, %d\n", block->ast_head->next->data->right->value - 1); // i < upper(num)の場合．'<'なので-1
+        fprintf(dstfile, "\tcmp rcx, %d\n", block->ast_head->next->data->right->value); // i < upper(num)
         if(block->ast_head->next->data->kind == AST_CMP_LT) {
-            fprintf(dstfile, "\tjns .L%d\n", label_entry);
+            fprintf(dstfile, "\tjns .L%d\n", label_entry + 1);
         }
 
         // TODO: ループ誘導変数の更新と，L1への無条件ジャンプ

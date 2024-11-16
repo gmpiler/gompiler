@@ -10,6 +10,7 @@ C_OPT = -g
 # FILENAME = testadd
 # FILENAME = testblock
 FILENAME = testloop
+# FILENAME = testnestedloop
 
 all:
 # Make toolchain

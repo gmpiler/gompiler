@@ -67,11 +67,9 @@
             "type": "cppdbg",
             "request": "launch",
             //mmpの場所
-            "program": "/home/sota0147/work/gompiler/work/gompiler",
+            "program": "/home/sota0147/work/gompiler/work/a.out",
             //引数．オプションなどを都度変更
             "args": [
-                "testadd.c",
-                "testadd.s",
             ],
             "stopAtEntry": false,
             "cwd": "/home/sota0147/work/gompiler/work", //カレントリワーキングディレクトリ

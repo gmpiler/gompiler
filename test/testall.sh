@@ -4,7 +4,7 @@ make
 
 rm result.txt
 index=0
-for case in testreturn testlocalvar
+for case in testreturn testlocalvar testloop testnestedloop
 do
     cp ../src/${case}.c .
     ./gompiler ${case}.c ${case}.s
