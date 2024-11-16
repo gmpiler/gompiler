@@ -64,10 +64,10 @@ void stackmachine_emulator_x86_64_blocks(Block *block, FILE *dstfile)
 {
     for(Block *b = block; b != NULL; b = b->next){
         if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
-            stackmachine_emulator_x86_64_block(b, dstfile);
+            if(b->ast_head->data != NULL) stackmachine_emulator_x86_64_block(b, dstfile);
             stackmachine_emulator_x86_64_blocks(b->inner, dstfile);
         }else{
-            stackmachine_emulator_x86_64_block(b, dstfile);
+            if(b->ast_head->data != NULL) stackmachine_emulator_x86_64_block(b, dstfile);
         }
     }
 }

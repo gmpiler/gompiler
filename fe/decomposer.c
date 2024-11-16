@@ -353,7 +353,8 @@ void construct_ast_blocks(Block *block)
 {
     for(Block *b = block; b != NULL; b = b->next){
         if(b->type == B_FOR || b->type == B_WHILE || b->type == B_IF) {
-            construct_ast_block(b);
+            // construct_ast_block(b);
+            construct_ast_block_condition(b);
             construct_ast_blocks(b->inner);
         }else{
             construct_ast_block(b);
@@ -382,6 +383,83 @@ void construct_ast_block(Block *block)
             AST_Node *var_node  = create_node_var(cur_token);
             AST_Node *parent    = create_node_assign(var_node, create_node_expr(cur_token->next->next));
             append_ast(ast_list, parent);
+        }
+    }
+    block->ast_head = ast_list;
+}
+
+/**
+ * @brief FOR/WHILE/IFブロック1つが渡される．その中に格納されているexprのトークン列からASTを構築する
+ * @attention: 取り急ぎ，<, >, ++のみ実装
+ */
+void construct_ast_block_condition(Block *block)
+{
+    cur_token = block->expr_head;
+    AST_Node_List *ast_list = (AST_Node_List*)malloc(sizeof(AST_Node_List));
+    while(cur_token != NULL) {
+        if(cur_token->type == SEMICOLON) {
+            cur_token = cur_token->next;
+            continue;
+        }
+        if(cur_token->type == TYPE) cur_token = cur_token->next->next->next; // TODO: declaration, expecting <TYPE> <VAR> <;>
+        if(cur_token->type == VAR) { // assign, expecting <VAR> <ASSIGN> <expr>
+            if(cur_token->next->type == ASSIGN) {
+                AST_Node *var_node          = create_node_var(cur_token);
+                AST_Node *parent            = create_node_assign(var_node, create_node_expr(cur_token->next->next));
+                append_ast(ast_list, parent);
+                continue;
+                // TODO: need to add condition (==) case
+            }else if(cur_token->next->type == OP){    // assign, expecting <VAR> {<OP> <OP> | <OP> <ASSIGN>}
+                if(cur_token->next->next->type == OP) {
+                    AST_Node *loop_var          = create_node_var(cur_token);               // i
+                    TOKENS   *token_one         = (TOKENS*)malloc(sizeof(TOKENS));
+                    token_one->type = NUM;
+                    strcpy(token_one->value, "1");
+                    AST_Node *node_one          = create_node_num(token_one);               // 1
+                    AST_Node *node_add          = create_node(AST_ADD, loop_var, node_one); // i + 1
+                    AST_Node *parent            = create_node_assign(loop_var, node_add);   // i = i + 1
+                    append_ast(ast_list, parent);
+                    cur_token = (cur_token->next->next->next == NULL) ? NULL : cur_token->next->next->next;
+                    continue;
+                }
+#if 0
+                if(cur_token->next->next->type == ASSIGN) printf("'<OP> <ASSIGN>' are not implemented\n");
+#endif
+            }
+            if(cur_token->next->type == GT) {
+                AST_Node *loop_var          = create_node_var(cur_token);               // i
+                AST_Node *upper_var;
+                if(cur_token->next->next->type == VAR) {
+                    upper_var          = create_node_var(cur_token->next->next);               // upper(var)
+                }else if(cur_token->next->next->type == NUM){
+                    upper_var          = create_node_num(cur_token->next->next);               // upper(num)
+                }
+#if 0
+                else if(cur_token->next->next->type == ASSIGN){
+                    if(cur_token->next->next->next->type == VAR) {
+                        upper_var          = create_node_var(cur_token->next->next);               // upper(var)
+                    }else if(cur_token->next->next->next->type == NUM){
+                        upper_var          = create_node_num(cur_token->next->next);               // upper(num)
+                    }
+                }
+#endif
+                AST_Node *node_cmp          = create_node(AST_CMP_GT, loop_var, upper_var); // i < upper
+                append_ast(ast_list, node_cmp);
+                cur_token = (cur_token->next->next->next == NULL) ? NULL : cur_token->next->next->next;
+                continue;
+            }else if(cur_token->next->type == LT){
+                AST_Node *loop_var          = create_node_var(cur_token);               // i
+                AST_Node *upper_var;
+                if(cur_token->next->next->type == VAR) {
+                    upper_var          = create_node_var(cur_token->next->next);               // upper(var)
+                }else if(cur_token->next->next->type == NUM){
+                    upper_var          = create_node_num(cur_token->next->next);               // upper(num)
+                }
+                AST_Node *node_cmp          = create_node(AST_CMP_LT, loop_var, upper_var); // i < upper
+                append_ast(ast_list, node_cmp);
+                cur_token = (cur_token->next->next->next == NULL) ? NULL : cur_token->next->next->next;
+                continue;
+            }
         }
     }
     block->ast_head = ast_list;

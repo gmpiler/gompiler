@@ -7,8 +7,9 @@ C_OPT = -g
 
 # Target
 # FILENAME = testcalculator
-FILENAME = testadd
+# FILENAME = testadd
 # FILENAME = testblock
+FILENAME = testloop
 
 all:
 # Make toolchain

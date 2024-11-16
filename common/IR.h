@@ -88,6 +88,9 @@ typedef enum {
     AST_NUM,
     AST_VAR,
     AST_ASSIGN,
+    AST_CMP_GT,
+    AST_CMP_LT,
+    AST_CMP_EQ,
     AST_RET
 } AST_Node_Kind;
 

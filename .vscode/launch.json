@@ -12,8 +12,8 @@
             "program": "/home/sota0147/work/work/gompiler",
             //引数．オプションなどを都度変更
             "args": [
-                "testadd.c",
-                "testadd.s",
+                "testloop.c",
+                "testloop.s",
             ],
             "stopAtEntry": false,
             "cwd": "/home/sota0147/work/work", //カレントリワーキングディレクトリ
